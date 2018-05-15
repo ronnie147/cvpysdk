@@ -18,16 +18,16 @@ ClientGroup:  Class for representing a single Client Group of the commcell
 ClientGroups:
     __init__(commcell_object)  -- initialise instance of the ClientGroups associated with
                                     the specified commcell
-
+                                    
     __repr__()                 -- return all the clientgroup associated with the specified commcell
-
+    
     _get_clientgroups()        -- gets all the clientgroups associated with the commcell specified
-
+    
     _valid_clients()           -- returns the list of all the valid clients,
                                     from the list of clients provided
-
+                                    
     has_clientgroup()          -- checks if a client group exists with the given name or not
-
+                                    
     add(clientgroup_name)      -- adds a new client group to the commcell
 
     get(clientgroup_name)      -- returns the instance of the ClientGroup class,
@@ -41,13 +41,13 @@ ClientGroup:
              clientgroup_name,
              clientgroup_id=None)  -- initialise object of ClientGroup class with the specified
                                          client group name and id
-
+                                         
     __repr__()                     -- return the client group name, the instance is associated with
-
+    
     _get_clientgroup_id()          -- method to get the clientgroup id, if not specified
-
+    
     _get_clientgroup_properties()  -- get the properties of this clientgroup
-
+    
     _initialize_clientgroup_properties() --  initializes the properties of this ClientGroup
 
     _request_json_()               -- returns the appropriate JSON to pass for enabling/disabling
@@ -56,31 +56,31 @@ ClientGroup:
     _process_request_()            -- processes the response received for the CG properties request
 
     _update()                      -- updates the client group properties
-
+    
     _add_or_remove_clients()       -- adds/removes clients to/from a ClientGroup
 
     enable_backup_at_time()        -- enables backup for the client group at the time specified
-
+    
     enable_backup()                -- enables the backup flag
-
+    
     disable_backup()               -- disables the backup flag
-
+    
     enable_restore_at_time()       -- enables restore for the client group at the time specified
-
+    
     enable_restore()               -- enables the restore flag
-
+    
     disable_restore()              -- disables the restore flag
-
+    
     enable_data_aging_at_time()    -- enables data aging for the client group at the time specified
-
+    
     enable_data_aging()            -- enables the data aging flag
-
+    
     disable_data_aging()           -- disables the data aging flag
-
+    
     add_clients()                  -- adds the valid clients to client group
-
+    
     remove_clients()               -- removes the valid clients from client group
-
+    
     remove_all_clients()           -- removes all the associated clients from client group
 
 """
@@ -145,7 +145,7 @@ class ClientGroups(object):
             Raises:
                 SDKException:
                     if response is empty
-
+                    
                     if response is not success
         """
         flag, response = self._commcell_object._cvpysdk_object.make_request(
@@ -186,7 +186,7 @@ class ClientGroups(object):
             raise SDKException('ClientGroup', '101')
 
         clients = []
-
+        
         for client in clients_list:
             if isinstance(client, str):
                 client = client.strip().lower()
@@ -221,11 +221,11 @@ class ClientGroups(object):
             enable_backup=True,
             enable_restore=True,
             enable_data_aging=True):
-        """Adds a new Client Group to the Commcell.
+        """Adds a new Client Group to the commcell.
 
             Args:
                 clientgroup_name        (str)        --  name of the new client group to add
-
+                
                 clients                 (str/list)   --  ',' separated string of client names,
                                                              or a list of clients,
                                                              to be added under client group
@@ -249,13 +249,13 @@ class ClientGroups(object):
             Raises:
                 SDKException:
                     if type of client group name and description is not of type string
-
+                    
                     if clients argument is not of type list / string
-
+                    
                     if response is empty
-
+                    
                     if response is not success
-
+                    
                     if client group already exists with the given name
         """
         if not (isinstance(clientgroup_name, str) and isinstance(clientgroup_description, str)):
@@ -270,7 +270,7 @@ class ClientGroups(object):
                 raise SDKException('ClientGroup', '101')
 
             clients_list = []
-
+            
             for client in clients:
                 clients_list.append({'clientName': client})
 
@@ -377,11 +377,11 @@ class ClientGroups(object):
             Raises:
                 SDKException:
                     if type of the clientgroup name argument is not string
-
+                    
                     if response is empty
-
+                    
                     if failed to delete the client group
-
+                    
                     if no clientgroup exists with the given name
         """
 
@@ -405,7 +405,7 @@ class ClientGroups(object):
                             error_code = str(response.json()['errorCode'])
                             error_message = str(response.json()['errorMessage'])
 
-                            if error_code == '0':
+                            if error_code is '0':
                                 # initialize the clientgroups again
                                 # so the clientgroups object has all the client groups
                                 self._clientgroups = self._get_clientgroups()
@@ -437,9 +437,9 @@ class ClientGroup(object):
 
             Args:
                 commcell_object     (object)   --  instance of the Commcell class
-
+                
                 clientgroup_name    (str)      --  name of the clientgroup
-
+                
                 clientgroup_id      (str)      --  id of the clientgroup
                     default: None
 
@@ -449,7 +449,7 @@ class ClientGroup(object):
         self._commcell_object = commcell_object
 
         self._clientgroup_name = str(clientgroup_name).lower()
-
+        
         if clientgroup_id:
             # Use the client group id provided in the arguments
             self._clientgroup_id = str(clientgroup_id)
@@ -460,7 +460,7 @@ class ClientGroup(object):
         self._CLIENTGROUP = self._commcell_object._services.CLIENTGROUP % (self.clientgroup_id)
 
         self._initialize_clientgroup_properties()
-
+        
     def __repr__(self):
         """String representation of the instance of this class.
 
@@ -488,41 +488,41 @@ class ClientGroup(object):
             Raises:
                 SDKException:
                     if response is empty
-
+                    
                     if response is not success
         """
 
         flag, response = self._commcell_object._cvpysdk_object.make_request(
             'GET', self._CLIENTGROUP
         )
-
+                                                                            
         if flag:
             if response.json() and 'clientGroupDetail' in response.json():
                 return response.json()['clientGroupDetail']
             else:
-                raise SDKException('Response', '102')
+                raise SDKException('Response', '102')    
         else:
             response_string = self._commcell_object._update_response_(response.text)
             raise SDKException('Response', '101', response_string)
 
     def _initialize_clientgroup_properties(self):
         """Initializes the common properties for the clientgroup."""
-        clientgroup_props = self._get_clientgroup_properties()
-
+        clientgroup_props = self._get_clientgroup_properties()        
+        
         if 'clientGroupName' in clientgroup_props['clientGroup']:
             self._clientgroup_name = str(clientgroup_props['clientGroup']['clientGroupName'])
         else:
             raise SDKException(
                 'ClientGroup', '102', 'Client Group name is not specified in the respone'
             )
-
+                               
         self._description = None
 
         if 'description' in clientgroup_props:
             self._description = str(clientgroup_props['description'])
-
+            
         self._associated_clients = []
-
+        
         if 'associatedClients' in clientgroup_props:
             for client in clientgroup_props['associatedClients']:
                 self._associated_clients.append(str(client['clientName']))
@@ -530,10 +530,10 @@ class ClientGroup(object):
         self._is_backup_enabled = False
         self._is_restore_enabled = False
         self._is_data_aging_enabled = False
-
+                
         if 'clientGroupActivityControl' in clientgroup_props:
             cg_activity_control = clientgroup_props['clientGroupActivityControl']
-
+        
             if 'activityControlOptions' in cg_activity_control:
                 for control_options in cg_activity_control['activityControlOptions']:
                     if control_options['activityType'] == 1:
@@ -558,16 +558,16 @@ class ClientGroup(object):
             "Restore": 2,
             "Data Aging": 16
         }
-
+        
         request_json1 = {
             "clientGroupOperationType": 2,
             "clientGroupDetail": {
                 "clientGroupActivityControl": {
-                    "activityControlOptions": [{
-                        "activityType": options_dict[option],
-                        "enableAfterADelay": False,
-                        "enableActivityType": enable
-                    }]
+            			"activityControlOptions": [{
+                            "activityType": options_dict[option],
+                            "enableAfterADelay": False,
+                            "enableActivityType": enable
+                       }]
                 },
                 "clientGroup": {
                     "newName": self.clientgroup_name
@@ -579,15 +579,15 @@ class ClientGroup(object):
             "clientGroupOperationType": 2,
             "clientGroupDetail": {
                 "clientGroupActivityControl": {
-                    "activityControlOptions": [{
-                        "activityType": options_dict[option],
-                        "enableAfterADelay": True,
-                        "enableActivityType": False,
-                        "dateTime": {
-                            "TimeZoneName": "(UTC) Coordinated Universal Time",
-                            "timeValue": enable_time
-                        }
-                    }]
+            			"activityControlOptions": [{
+                            "activityType": options_dict[option],
+                            "enableAfterADelay": True,
+                            "enableActivityType": False,
+                            "dateTime": {
+                                "TimeZoneName": "(UTC) Coordinated Universal Time",
+                                "timeValue": enable_time
+                            }
+                        }]
                 },
                 "clientGroup": {
                     "newName": self.clientgroup_name
@@ -599,23 +599,23 @@ class ClientGroup(object):
             return request_json2
         else:
             return request_json1
-
+            
     def _process_request_(self, request_json):
         """Runs the Clientgroup update API to enable/disable backup, restore or data aging flags
-
+        
             Args:
                 request_json    (dict)  -- request json sent as payload
-
+                
             Returns:
                 (str, str):
                     str  -  error code received in the response
-
+                    
                     str  -  error message received
 
             Raises:
                 SDKException:
                     if response is empty
-
+                    
                     if response is not success
         """
         flag, response = self._commcell_object._cvpysdk_object.make_request(
@@ -625,14 +625,14 @@ class ClientGroup(object):
         if flag:
             if response.json():
                 error_code = str(response.json()['errorCode'])
-
+                
                 if 'errorMessage' in response.json():
                     error_message = response.json()['errorMessage']
                 else:
                     error_message = ""
-
+                
                 return (error_code, error_message)
-
+                                    
             else:
                 raise SDKException('Response', '102')
         else:
@@ -648,19 +648,19 @@ class ClientGroup(object):
         """Update the clientgroup properties of this clientgroup.
 
             Args:
-                clientgroup_name        (str)       --  new name of the clientgroup
+                clientgroup_name        (str)       -- new name of the clientgroup
 
-                clientgroup_description (str)       --  description for the clientgroup
+                clientgroup_description (str)       -- description for the clientgroup
 
                 associated_clients      (str/list)  --  ',' separated string of client names,
                                                             or a list of clients,
                                                             to be added/removed under client group
                     default: None
 
-                operation_type          (str)       --  associated clients operation type
-                        Valid values: NONE, OVERWRITE, ADD, DELETE, CLEAR
+                operation_type          (str)       -- associated clients operation type
+                                                        Valid values: NONE, OVERWRITE, ADD, DELETE, CLEAR
                     default: NONE
-
+                
             Raises:
                 SDKException:
                     if response is empty
@@ -668,28 +668,28 @@ class ClientGroup(object):
                     if response is not success
         """
         clients_list = []
-
+        
         associated_clients_op_types = {
             "NONE": 0,
             "OVERWRITE": 1,
             "ADD": 2,
             "DELETE": 3,
-            "CLEAR": 4
-        }
-
+            "CLEAR": 4        
+        }        
+        
         for client in associated_clients:
             clients_list.append({'clientName': client})
-
+        
         request_json = {
             "clientGroupOperationType": 2,
             "clientGroupDetail": {
                 "description": clientgroup_description,
                 "clientGroup": {
                     "newName": clientgroup_name
-                },
+            		},
                 "associatedClientsOperationType": associated_clients_op_types[operation_type],
                 "associatedClients": clients_list
-            }
+            	}
         }
 
         flag, response = self._commcell_object._cvpysdk_object.make_request(
@@ -697,14 +697,14 @@ class ClientGroup(object):
         )
 
         self._initialize_clientgroup_properties()
-
+            
         if flag:
             if response.json():
-
+                
                 error_message = str(response.json()['errorMessage'])
                 error_code = str(response.json()['errorCode'])
 
-                if error_code == '0':
+                if error_code is '0':
                     return (True, "0", "")
                 else:
                     return (False, error_code, error_message)
@@ -718,7 +718,7 @@ class ClientGroup(object):
     def _add_or_remove_clients(self, clients, operation_type):
         """Adds/Removes clients to/from the ClientGroup.
 
-        Args:
+            Args:
                 clients         (str/list)   --  ',' separated string of client names,
                                                      or a list of clients,
                                                      to be added under client group
@@ -791,7 +791,7 @@ class ClientGroup(object):
     def description(self):
         """Treats the clientgroup description as a read-only attribute."""
         return self._description
-
+        
     @property
     def associated_clients(self):
         """Treats the clients associated to the ClientGroup as a read-only attribute."""
@@ -808,17 +808,17 @@ class ClientGroup(object):
     def is_backup_enabled(self):
         """Treats the clientgroup backup attribute as a property of the ClientGroup class."""
         return self._is_backup_enabled
-
+        
     @property
     def is_restore_enabled(self):
         """Treats the clientgroup restore attribute as a propetry of the ClientGroup class."""
         return self._is_restore_enabled
-
+        
     @property
     def is_data_aging_enabled(self):
         """Treats the clientgroup data aging attribute as a property of the ClientGroup class."""
         return self._is_data_aging_enabled
-
+    
     def enable_backup(self):
         """Enable Backup for this ClientGroup.
 
@@ -845,7 +845,7 @@ class ClientGroup(object):
         """Disables Backup if not already disabled, and enables at the time specified.
 
             Args:
-                enable_time (str)  --  UTC time to enable the backup at, in 24 Hour format
+                enable_time     (str)  --  UTC time to enable the backup at, in 24 Hour format
                     format: YYYY-MM-DD HH:mm:ss
 
             Raises:
@@ -875,7 +875,7 @@ class ClientGroup(object):
             else:
                 o_str = 'Failed to enable Backup'
 
-            raise SDKException('ClientGroup', '102', o_str)
+            raise SDKException('ClientGroup', '102', o_str) 
 
     def disable_backup(self):
         """Disables Backup for this ClientGroup.
@@ -885,7 +885,7 @@ class ClientGroup(object):
                     if failed to disable backup
         """
         request_json = self._request_json_('Backup', False)
-
+        
         error_code, error_message = self._process_request_(request_json)
 
         if error_code == '0':
@@ -897,7 +897,7 @@ class ClientGroup(object):
             else:
                 o_str = 'Failed to diable Backup'
 
-            raise SDKException('ClientGroup', '102', o_str)
+            raise SDKException('ClientGroup', '102', o_str) 
 
     def enable_restore(self):
         """Enable Restore for this ClientGroup.
@@ -919,13 +919,13 @@ class ClientGroup(object):
             else:
                 o_str = 'Failed to enable Restore'
 
-            raise SDKException('ClientGroup', '102', o_str)
+            raise SDKException('ClientGroup', '102', o_str) 
 
     def enable_restore_at_time(self, enable_time):
         """Disables restore if not already disabled, and enables at the time specified.
 
             Args:
-                enable_time (str)  --  UTC time to enable the backup at, in 24 Hour format
+                enable_time     (str)  --  UTC time to enable the backup at, in 24 Hour format
                     format: YYYY-MM-DD HH:mm:ss
 
             Raises:
@@ -944,7 +944,7 @@ class ClientGroup(object):
             raise SDKException('ClientGroup', '104')
 
         request_json = self._request_json_('Restore', False, enable_time)
-
+        
         error_code, error_message = self._process_request_(request_json)
 
         if error_code == '0':
@@ -955,7 +955,7 @@ class ClientGroup(object):
             else:
                 o_str = 'Failed to enable Restore'
 
-            raise SDKException('ClientGroup', '102', o_str)
+            raise SDKException('ClientGroup', '102', o_str) 
 
     def disable_restore(self):
         """Disables Restore for this ClientGroup.
@@ -965,7 +965,7 @@ class ClientGroup(object):
                     if failed to disable restore
         """
         request_json = self._request_json_('Restore', False)
-
+        
         error_code, error_message = self._process_request_(request_json)
 
         if error_code == '0':
@@ -977,7 +977,7 @@ class ClientGroup(object):
             else:
                 o_str = 'Failed to disable Restore'
 
-            raise SDKException('ClientGroup', '102', o_str)
+            raise SDKException('ClientGroup', '102', o_str) 
 
     def enable_data_aging(self):
         """Enable Data Aging for this ClientGroup.
@@ -987,7 +987,7 @@ class ClientGroup(object):
                     if failed to enable data aging
         """
         request_json = self._request_json_('Data Aging')
-
+        
         error_code, error_message = self._process_request_(request_json)
 
         if error_code == '0':
@@ -999,13 +999,13 @@ class ClientGroup(object):
             else:
                 o_str = 'Failed to enable Data Aging'
 
-            raise SDKException('ClientGroup', '102', o_str)
+            raise SDKException('ClientGroup', '102', o_str) 
 
     def enable_data_aging_at_time(self, enable_time):
         """Disables Data Aging if not already disabled, and enables at the time specified.
 
             Args:
-                enable_time (str)  --  UTC time to enable the backup at, in 24 Hour format
+                enable_time     (str)  --  UTC time to enable the backup at, in 24 Hour format
                     format: YYYY-MM-DD HH:mm:ss
 
             Raises:
@@ -1035,7 +1035,7 @@ class ClientGroup(object):
             else:
                 o_str = 'Failed to enable Data Aging'
 
-            raise SDKException('ClientGroup', '102', o_str)
+            raise SDKException('ClientGroup', '102', o_str) 
 
     def disable_data_aging(self):
         """Disables Data Aging for this ClientGroup.
@@ -1057,7 +1057,7 @@ class ClientGroup(object):
             else:
                 o_str = 'Failed to disable Data Aging'
 
-            raise SDKException('ClientGroup', '102', o_str)
+            raise SDKException('ClientGroup', '102', o_str) 
 
     @clientgroup_name.setter
     def clientgroup_name(self, value):
@@ -1078,7 +1078,7 @@ class ClientGroup(object):
             raise SDKException(
                 'ClientGroup', '102', 'Clientgroup name should be a string value'
             )
-
+        
     @description.setter
     def description(self, value):
         """Sets the description of the clientgroup as the value provided in input."""
@@ -1101,14 +1101,14 @@ class ClientGroup(object):
 
     def add_clients(self, clients, overwrite=False):
         """Adds clients to the ClientGroup.
+        
+            Args:
+                clients     (str/list)   --  ',' separated string of client names,
+                                                 or a list of clients,
+                                                 to be added under client group
 
-        Args:
-                clients     (str/list)  --  ',' separated string of client names,
-                                                or a list of clients,
-                                                to be added under client group
-
-                overwrite   (bool)      --  if set to true will remove old clients,
-                                                and add new clients
+                overwrite   (bool)       --  if set to true will remove old clients,
+                                                 and add new clients
                     default: False
 
             Raises:
@@ -1126,11 +1126,11 @@ class ClientGroup(object):
 
     def remove_clients(self, clients):
         """Deletes clients from the ClientGroup.
-
+            
             Args:
-                clients     (str/list)  --  ',' separated string of client names,
-                                                or a list of clients,
-                                                to be removed from the client group
+                clients     (str/list)   --  ',' separated string of client names,
+                                                 or a list of clients,
+                                                 to be removed from the client group
 
             Raises:
                 SDKException:
@@ -1147,7 +1147,7 @@ class ClientGroup(object):
 
             Raises:
                 SDKException:
-                    if failed to remove all clients from client group
+                    if failed to remove all clients from client group        
         """
         output = self._update(
             clientgroup_name=self.clientgroup_name,

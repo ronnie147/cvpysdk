@@ -11,36 +11,35 @@
 
 SQLServerInstance is the only class defined in this file.
 
-SQLServerInstance: Derived class from Instance Base class, representing a sql server instance,
-                       and to perform operations on that instance
+SQLServerInstance: Derived class from Instance Base class, representing a sql server instance, 
+                           and to perform operations on that instance
 
 SQLServerInstance:
     _restore_request_json()         --  returns the restore request json
-
-    _process_restore_response()     --  processes response received for the Restore request
-
+    
+    _process_restore_request()      --  processes response received for the Restore request
+    
     _get_sql_restore_options()      --  returns the dict containing destination sql server names
-
+    
     _run_backup()                   --  runs full backup for this subclients and appends the
                                             job object to the return list
 
     _process_browse_request()       --  processes response received for Browse request
+    
+    restore()                       --  runs the restore job for specified 
 
+    restore_to_destination_server() --  restores the database on destination server
+    
+    browse()                        --  gets the content of the backup for this instance
+                                            
+    browse_in_time()                --  gets the content of the backup for this instance
+                                            in the time range specified
+                                            
     backup()                        --  runs full backup for all subclients associated
                                             with this instance
 
-    browse()                        --  gets the content of the backup for this instance
-
-    browse_in_time()                --  gets the content of the backup for this instance
-                                            in the time range specified
-
-    restore()                       --  runs the restore job for specified
-
-    restore_to_destination_server() --  restores the database on destination server
-
 """
 
-import datetime
 import time
 import re
 import threading
@@ -49,53 +48,38 @@ from ..instance import Instance
 from ..exception import SDKException
 from ..job import Job
 
-
 class SQLServerInstance(Instance):
     """Derived class from Instance Base class, representing a SQL Server instance,
         and to perform operations on that Instance."""
-
-    def _restore_request_json(
-            self,
-            content_to_restore,
-            restore_path=None,
-            drop_connections_to_databse=False,
-            overwrite=True,
-            destination_instance=None):
+        
+    def _restore_request_json(self, content_to_restore, restore_path= None, 
+                drop_connections_to_databse= False, overwrite= True, destination_instance= None):
         """Returns the JSON request to pass to the API as per the options selected by the user.
 
             Args:
                 content_to_restore   (list)  --  databases list to restore
-
+                
             Returns:
                 dict - JSON request to pass to the API
         """
 
         self._get_sql_restore_options(content_to_restore)
-
+            
         if destination_instance is None:
             destination_instance = self.instance_name
         else:
             if str(destination_instance) not in self.destination_instances_dict:
                 raise SDKException(
-                    'Instance', '102', 'No Instance exists with name: {0}'.format(
-                        str(destination_instance)
-                    )
+                    'Instance', '102', 'No Instance exists with name: {0}'
+                                            .format(str(destination_instance))
                 )
-
-        destination_client_id = int(
-            self.destination_instances_dict[str(destination_instance)]['clientId']
-        )
-
-        destination_instance_id = int(
-            self.destination_instances_dict[destination_instance]['instanceId']
-        )
-
+            
         request_json = {
             "taskInfo": {
                 "associations": [{
                     "clientName": str(self._agent_object._client_object.client_name),
-                    "appName": str(self._agent_object.agent_name),
-                    "instanceName": str(self.instance_name)
+                    "instanceName": str(self.instance_name),
+                    "appName": str(self._agent_object.agent_name)
                 }],
                 "task": {
                     "initiatedFrom": 1,
@@ -116,16 +100,16 @@ class SQLServerInstance(Instance):
                                 "database": content_to_restore,
                                 "restoreSource": content_to_restore
                             },
-                            "commonOptions": {
+                            "commonOptions": {                
                             },
                             "destination": {
                                 "destinationInstance": {
-                                    "clientId": destination_client_id,
+                                    "clientId": int(self.destination_instances_dict[str(destination_instance)]['clientId']),
                                     "instanceName": str(destination_instance),
-                                    "instanceId": destination_instance_id
+                                    "instanceId": int(self.destination_instances_dict[destination_instance]['instanceId'])
                                 },
                                 "destClient": {
-                                    "clientId": destination_client_id
+                                    "clientId": int(self.destination_instances_dict[str(destination_instance)]['clientId'])
                                 }
                             }
                         }
@@ -133,19 +117,16 @@ class SQLServerInstance(Instance):
                 }]
             }
         }
-
+        
+        
         if restore_path is not None:
-            restore_path_dict = {
-                "restoreToDiskPath": str(restore_path),
-                "restoreToDisk": True
-            }
-
-            request_json['taskInfo']['subTasks'][0]['options']['restoreOptions'][
-                'sqlServerRstOption'].update(restore_path_dict)
-
+            restore_path_dict = { "restoreToDiskPath": str(restore_path), "restoreToDisk": True}
+            request_json['taskInfo']['subTasks'][0]['options']['restoreOptions']['sqlServerRstOption'].update(restore_path_dict)
+            
         return request_json
 
-    def _process_restore_response(self, request_json):
+    
+    def _process_restore_request(self, request_json):
         """Runs the CreateTask API with the request JSON provided for Restore,
             and returns the contents after parsing the response.
 
@@ -171,9 +152,11 @@ class SQLServerInstance(Instance):
             if response.json():
                 if "jobIds" in response.json():
                     time.sleep(1)
+
                     return Job(self._commcell_object, response.json()['jobIds'][0])
                 elif "errorCode" in response.json():
                     error_message = response.json()['errorMessage']
+
                     o_str = 'Restore job failed\nError: "{0}"'.format(error_message)
                     raise SDKException('Instance', '102', o_str)
                 else:
@@ -183,7 +166,7 @@ class SQLServerInstance(Instance):
         else:
             response_string = self._commcell_object._update_response_(response.text)
             raise SDKException('Response', '101', response_string)
-
+    
     def _get_sql_restore_options(self, content_to_restore):
         """Runs the SQL/Restoreoptions API with the request JSON provided,
             and returns the contents after parsing the response.
@@ -205,35 +188,33 @@ class SQLServerInstance(Instance):
                     if response is not success
         """
         contents_dict = []
-
         for content in content_to_restore:
             database_dict = {
-                "databaseName": content
+                "databaseName": content         
             }
             contents_dict.append(database_dict)
-
+            
         request_json = {
             "restoreDbType": 2,
             "sourceInstanceId": int(self.instance_id),
             "selectedDatabases": contents_dict
         }
-
+        
         webservice = self._commcell_object._services.SQL_RESTORE_OPTIONS
 
-        flag, response = self._commcell_object._cvpysdk_object.make_request(
-            "POST", webservice, request_json
-        )
-
+        flag, response = self._commcell_object._cvpysdk_object.make_request("POST", webservice, request_json)
+        
         self.destination_instances_dict = {}
-
+        
         if flag:
             if response.json():
                 if 'sqlDestinationInstances' in response.json():
+                    
                     for instance in response.json()['sqlDestinationInstances']:
                         instances_dict = {
-                            str(instance['genericEntity']['instanceName']).lower(): {
+                            str(instance['genericEntity']['instanceName']).lower():{
                                 "instanceId": int(instance['genericEntity']['instanceId']),
-                                "clientId": int(instance['genericEntity']['clientId'])
+                                "clientId": int(instance['genericEntity']['clientId']) 
                             }
                         }
                         self.destination_instances_dict.update(instances_dict)
@@ -248,9 +229,9 @@ class SQLServerInstance(Instance):
         else:
             response_string = self._commcell_object._update_response_(response.text)
             raise SDKException('Response', '101', response_string)
-
+        
     def _run_backup(self, subclient_name, return_list):
-        """Triggers full backup job for the given subclient, and appends its Job object to list
+        """Triggers full backup job for the given subclient, and appends its Job object to the list.
             The SDKExcpetion class instance is appended to the list,
             if any exception is raised while running the backup job for the Subclient.
 
@@ -264,20 +245,19 @@ class SQLServerInstance(Instance):
             if job:
                 return_list.append(job)
         except SDKException as excp:
-            return_list.append(excp)
-
+            return_list.append(excp)    
+    
     def _process_browse_request(self, browse_request):
-        """Runs the SQL Instance Browse API with the request JSON provided for the operation
-            specified, and returns the contents after parsing the response.
+        """Runs the SQL Instance Browse API with the request JSON provided for the operation specified,
+            and returns the contents after parsing the response.
 
             Args:
                 browse_request    (dict)  --  JSON request to be sent to Server
 
             Returns:
-                list - list of all databases
-
-                dict - database names along with details like backup created time
-                           and database version
+                list - list of all databases 
+                
+                dict - database names along with details like backup created time, database version
 
             Raises:
                 SDKException:
@@ -286,70 +266,122 @@ class SQLServerInstance(Instance):
                     if response is not success
         """
         flag, response = self._commcell_object._cvpysdk_object.make_request("GET", browse_request)
-
         full_result = []
         databases = []
-
         if flag:
             if response.json():
                 if 'sqlDatabase' in response.json():
                     for database in response.json()['sqlDatabase']:
-
+                        
                         database_name = str(database['databaseName'])
-
-                        created_time = datetime.datetime.fromtimestamp(
-                            int(database['createdTime'])
-                        ).strftime('%d-%m-%Y %H:%M:%S')
-
+                        
+                        import datetime
+                        created_time = datetime.datetime.fromtimestamp(int(database['createdTime'])).strftime('%d-%m-%Y %H:%M:%S')                        
                         version = str(database['version'])
 
                         temp = {
                             database_name: [created_time, version]
                         }
-
+                        
                         databases.append(database_name)
                         full_result.append(temp)
-
+                        
                 return databases, full_result
             else:
                 raise SDKException('Response', '102')
         else:
             response_string = self._commcell_object._update_response_(response.text)
-            raise SDKException('Response', '101', response_string)
+            raise SDKException('Response', '101', response_string)        
+        
+    def restore(self, content_to_restore, drop_connections_to_databse = False, overwrite = True, restore_path = None):
+        """Restores the databases specified in the input paths list.
 
-    def backup(self):
-        """Run full backup job for all subclients in this instance.
+            Args:
+                content_to_restore             (list)  --  list of databases to restore
+
+                drop_connections_to_databse    (bool)  --  Drop connections to database
+                    default: False
+
+                overwrite                      (bool)  --  unconditional overwrite files during 
+                                                               restore
+                    default: True
+
+                restore_path                   (str)   --  existing path on disk to restore 
+                    default: None
 
             Returns:
-                list - list containing the job objects for the full backup jobs started for
-                           the subclients in the backupset
+                object - instance of the Job class for this restore job
+
+            Raises:
+                SDKException:
+                    if content_to_restore is not a list
+
+                    if response is empty
+
+                    if response is not success
         """
-        return_list = []
-        thread_list = []
+        if not isinstance(content_to_restore, list):        
+            raise SDKException('Instance', '101')
+            
+        request_json = self._restore_request_json(
+                            content_to_restore,
+                            drop_connections_to_databse= drop_connections_to_databse,
+                            overwrite= overwrite,
+                            restore_path= restore_path
+                        )
+        
+        return self._process_restore_request(request_json)
 
-        all_subclients = self.subclients._subclients
+    def restore_to_destination_server(self, content_to_restore, destination_server, 
+                    drop_connections_to_databse = False, overwrite = True, restore_path = None):
+        """Restores the databases specified in the input paths list.
 
-        if all_subclients:
-            for subclient in all_subclients:
-                thread = threading.Thread(
-                    target=self._run_backup, args=(subclient, return_list)
-                )
-                thread_list.append(thread)
-                thread.start()
+            Args:
+                content_to_restore             (list)  --  list of databases to restore
+                
+                destination_server             (str)   --  Destination server(instance) name
+                
+                drop_connections_to_databse    (bool)  --  Drop connections to database
+                    default: False
 
-        for thread in thread_list:
-            thread.join()
+                overwrite                      (bool)  --  unconditional overwrite files during
+                                                               restore
+                    default: True
 
-        return return_list
-
-    def browse(self):
-        """Gets the list of the backed up databases for this instance.
+                restore_path                   (str)   --  existing path on disk to restore 
+                    default: None
 
             Returns:
-                list - list of all databases
+                object - instance of the Job class for this restore job
 
-                dict - database names along with details like backup created time
-                           and database version
+            Raises:
+                SDKException:
+                    if content_to_restore is not a list
+
+                    if response is empty
+
+                    if response is not success
+        """
+        if not isinstance(content_to_restore, list):        
+            raise SDKException('Instance', '101')
+            
+        request_json = self._restore_request_json(
+                            content_to_restore,
+                            drop_connections_to_databse= drop_connections_to_databse,
+                            overwrite= overwrite,
+                            restore_path= restore_path,
+                            destination_instance= destination_server
+                        )
+        
+        return self._process_restore_request(request_json)
+        
+    def browse(self):
+        """Gets the list of the backedup databases for this instance.
+
+            Returns:
+                list - list of all databases 
+
+                dict - database names along with details like backup created time, database version
 
             Raises:
                 SDKException:
@@ -360,11 +392,11 @@ class SQLServerInstance(Instance):
         browse_request = self._commcell_object._services.INSTANCE_BROWSE % (
             self._agent_object._client_object.client_id, "SQL", self.instance_id
         )
-
+                            
         return self._process_browse_request(browse_request)
-
-    def browse_in_time(self, from_date=None, to_date=None):
-        """Gets the list of the backed up databases for this instance in the given time frame.
+            
+    def browse_in_time(self, from_date= None, to_date= None):
+        """Gets the list of the backedup databases for this instance in the given time frame.
 
             Args:
                 from_date           (str)   --  date to get the contents after
@@ -378,10 +410,9 @@ class SQLServerInstance(Instance):
                     default: None
 
             Returns:
-                list - list of all databases
+                list - list of all databases 
 
-                dict - database names along with details like backup created timen
-                           and database version
+                dict - database names along with details like backup created time, database version
 
             Raises:
                 SDKException:
@@ -389,7 +420,7 @@ class SQLServerInstance(Instance):
 
                     if response is not success
         """
-
+        
         if from_date and (from_date != '01/01/1970' and from_date != '1/1/1970'):
             temp = from_date.split('/')
             if (len(temp) == 3 and
@@ -421,103 +452,36 @@ class SQLServerInstance(Instance):
                 raise SDKException('Instance', '103')
         else:
             to_date = int(time.time())
-
+        
         browse_request = self._commcell_object._services.INSTANCE_BROWSE % (
             self._agent_object._client_object.client_id, "SQL", self.instance_id
         )
-
+        
         browse_request += '?fromTime={0}&toTime={1}'.format(from_date, to_date)
-
+                            
         return self._process_browse_request(browse_request)
-
-    def restore(
-            self,
-            content_to_restore,
-            drop_connections_to_databse=False,
-            overwrite=True,
-            restore_path=None):
-        """Restores the databases specified in the input paths list.
-
-            Args:
-                content_to_restore             (list)  --  list of databases to restore
-
-                drop_connections_to_databse    (bool)  --  Drop connections to database
-                    default: False
-
-                overwrite                      (bool)  --  unconditional overwrite files during
-                                                               restore
-                    default: True
-
-                restore_path                   (str)   --  existing path on disk to restore
-                    default: None
+    
+    def backup(self):
+        """Run full backup job for all subclients in this instance.
 
             Returns:
-                object - instance of the Job class for this restore job
-
-            Raises:
-                SDKException:
-                    if content_to_restore is not a list
-
-                    if response is empty
-
-                    if response is not success
+                list - list containing the job objects for the full backup jobs started for
+                        the subclients in the backupset
         """
-        if not isinstance(content_to_restore, list):
-            raise SDKException('Instance', '101')
+        return_list = []
+        thread_list = []
 
-        request_json = self._restore_request_json(
-            content_to_restore,
-            drop_connections_to_databse=drop_connections_to_databse,
-            overwrite=overwrite,
-            restore_path=restore_path
-        )
+        all_subclients = self.subclients._subclients
 
-        return self._process_restore_response(request_json)
+        if all_subclients:
+            for subclient in all_subclients:
+                thread = threading.Thread(
+                    target=self._run_backup, args=(subclient, return_list)
+                )
+                thread_list.append(thread)
+                thread.start()
 
-    def restore_to_destination_server(
-            self,
-            content_to_restore,
-            destination_server,
-            drop_connections_to_databse=False,
-            overwrite=True,
-            restore_path=None):
-        """Restores the databases specified in the input paths list.
+        for thread in thread_list:
+            thread.join()
 
-            Args:
-                content_to_restore             (list)  --  list of databases to restore
-
-                destination_server             (str)   --  Destination server(instance) name
-
-                drop_connections_to_databse    (bool)  --  Drop connections to database
-                    default: False
-
-                overwrite                      (bool)  --  unconditional overwrite files during
-                                                               restore
-                    default: True
-
-                restore_path                   (str)   --  existing path on disk to restore
-                    default: None
-
-            Returns:
-                object - instance of the Job class for this restore job
-
-            Raises:
-                SDKException:
-                    if content_to_restore is not a list
-
-                    if response is empty
-
-                    if response is not success
-        """
-        if not isinstance(content_to_restore, list):
-            raise SDKException('Instance', '101')
-
-        request_json = self._restore_request_json(
-            content_to_restore,
-            drop_connections_to_databse=drop_connections_to_databse,
-            overwrite=overwrite,
-            restore_path=restore_path,
-            destination_instance=destination_server
-        )
-
-        return self._process_restore_response(request_json)
+        return return_list
