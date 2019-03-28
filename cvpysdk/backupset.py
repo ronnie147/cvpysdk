@@ -347,22 +347,15 @@ class Backupsets(object):
 
         return self._backupsets and backupset_name.lower() in self._backupsets
 
-    def add(self, backupset_name, on_demand_backupset=False, **kwargs):
+    def add(self, backupset_name, on_demand_backupset=False):
         """Adds a new backup set to the agent.
 
             Args:
                 backupset_name      (str)   --  name of the new backupset to add
 
                 on_demand_backupset (bool)  --  flag to specify whether the backupset to be added
-                is a simple backupset or an on-demand backupset
-
+                                                    is a simple backupset or an on-demand backupset
                     default: False
-
-                **kwargs    --  dict of keyword arguments as follows:
-
-                    storage_policy  (str)   --  name of the storage policy to associate to the
-                    backupset
-
 
             Returns:
                 object - instance of the Backupset class, if created successfully
@@ -412,20 +405,6 @@ class Backupsets(object):
                 }
             }
         }
-
-        agent_settings = {
-            'db2': """
-request_json['backupSetInfo'].update({
-    'db2BackupSet': {
-        'dB2DefaultIndexSP': {
-            'storagePolicyName': kwargs.get('storage_policy', '')
-        }
-    }
-})
-            """
-        }
-
-        exec(agent_settings.get(self._agent_object.agent_name, ''))
 
         flag, response = self._cvpysdk_object.make_request(
             'POST', self._services['ADD_BACKUPSET'], request_json

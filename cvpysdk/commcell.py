@@ -33,7 +33,8 @@ Commcell:
 
     _qoperation_execute()       --  runs the qoperation execute rest api on specified input xml
 
-    _qoperation_execscript()    --  runs the qoperation execute qscript with specified arguements
+    _qoperation_execscript()    --  runs the qoperation execute script rest api with
+    specified arguements
 
     _set_gxglobalparam_value    --  updates GXGlobalParam(commcell level configuration parameters)
 
@@ -96,8 +97,6 @@ Commcell instance Attributes
     to the commcell
 
     **device_id**               --  returns the id associated with the calling machine
-
-    *name_change*               --  returns the name change object of the commcell
 
     **clients**                 --  returns the instance of the `Clients` class,
     to interact with the clients added on the Commcell
@@ -233,7 +232,6 @@ from .identity_management import IdentityManagementApps
 from .commcell_migration import CommCellMigration
 from .deployment.download import Download
 from .deployment.install import Install
-from .name_change import NameChange
 
 USER_LOGGED_OUT_MESSAGE = 'User Logged Out. Please initialize the Commcell object again.'
 """str:     Message to be returned to the user, when trying the get the value of an attribute
@@ -251,8 +249,7 @@ class Commcell(object):
             commcell_username=None,
             commcell_password=None,
             authtoken=None,
-            force_https=False,
-            certificate_path=None):
+            force_https=False):
         """Initialize the Commcell object with the values required for doing the API operations.
 
             Commcell Username and Password can be None, if QSDK / SAML token is being given
@@ -286,7 +283,6 @@ class Commcell(object):
 
                     default: None
 
-
                 force_https             (bool)  --  boolean flag to specify whether to force the
                 connection to the commcell only via HTTPS
 
@@ -296,12 +292,6 @@ class Commcell(object):
                 if flag is set to **True**, it'll only try via HTTPS, and exit if it fails
 
                     default: False
-
-
-                certificate_path        (str)   --  path of the CA_BUNDLE or directory with
-                certificates of trusted CAs (including trusted self-signed certificates)
-
-                    default: None
 
 
             Returns:
@@ -334,7 +324,7 @@ class Commcell(object):
 
         self._device_id = socket.getfqdn()
 
-        self._cvpysdk_object = CVPySDK(self, certificate_path)
+        self._cvpysdk_object = CVPySDK(self)
 
         # Checks if the service is running or not
         for service in web_service:
@@ -567,11 +557,8 @@ class Commcell(object):
         )
 
         if flag:
-            if response.ok:
-                try:
-                    return response.json()
-                except ValueError:
-                    return {'output': response}
+            if response.json():
+                return response.json()
             else:
                 raise SDKException('Response', '102')
         else:
@@ -602,7 +589,7 @@ class Commcell(object):
         return self._id
 
     def _qoperation_execscript(self, arguments):
-        """Makes a qoperation execute qscript with specified arguements
+        """Makes a qoperation execute rest api call
 
             Args:
                 arguments     (str)   --  arguements that is to be passed
@@ -621,11 +608,8 @@ class Commcell(object):
             'POST', self._services['EXECUTE_QSCRIPT'] % arguments)
 
         if flag:
-            if response.ok:
-                try:
-                    return response.json()
-                except ValueError:
-                    return {'output': response.text}
+            if response.json():
+                return response.json()
             else:
                 raise SDKException('Response', '102')
         else:
@@ -712,11 +696,6 @@ class Commcell(object):
             return self._device_id
         except AttributeError:
             return USER_LOGGED_OUT_MESSAGE
-
-    @property
-    def name_change(self):
-        """Returns an instance of Namechange class"""
-        return NameChange(self)
 
     @property
     def clients(self):

@@ -142,8 +142,7 @@ EXCEPTION_DICT = {
         '114': 'Type of backupset should either be the Backupset class instance or string',
         '115': 'Class object should be an instance of Agent / Instance / Backupset class',
         '116': 'Auto discovery values should be a list',
-        '117': 'Auto discovery is disabled at instance level',
-        '118': 'Failed to run the backup copy job'
+        '117': 'Auto discovery is disabled at instance level'
     },
     'Job': {
         '101': 'Incorrect JobId',
@@ -194,8 +193,7 @@ EXCEPTION_DICT = {
         '101': 'Data type of the input(s) is not valid',
         '102': '',
         '103': 'Input is not valid XML / file path',
-        '104': 'No Workflow exists with the given name',
-        '105': 'Failed to set workflow properties'
+        '104': 'No Workflow exists with the given name'
     },
     'Datacube': {
         '101': 'Data type of the input(s) is not valid',
@@ -292,8 +290,7 @@ EXCEPTION_DICT = {
         '102': ''
     },
     'Snap': {
-        '102': 'Failed to run the job for Snap Operation',
-        '103': 'Failed to update Snap Configs'
+        '102': 'Failed to run the job for Snap Operation'
     },
     'OperationWindow': {
         '101': 'Failed to create a operation window',
@@ -337,14 +334,6 @@ EXCEPTION_DICT = {
         '101': 'Array already exist',
         '102': 'Failed to add array',
         '103': 'Failed to delete array'
-    },
-    'NameChange' : {
-
-        '101' : 'Client hostname not provided',
-        '102' : 'Commcell hostname not provided',
-        '103' : 'Old domain name not provided',
-        '104' : 'New domain name not provided',
-        '105' : 'Client ID list not provided'
     }
 }
 

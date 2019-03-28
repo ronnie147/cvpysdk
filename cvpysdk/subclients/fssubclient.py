@@ -68,20 +68,10 @@ FileSystemSubclient:
 
     system_state_option()				--	Enable/Disable System state option for the subclient
 
-    onetouch_option()                   --  Enable/Disable One-Touch option for the subclient
-
-    onetouch_server()                   --  Provides the 1-touch server name
-
-    onetouch_server_directory()         --  Provides the 1-touch server directory
-
     backup()                            --  run a backup job for the subclient
-
-    run_backup_copy()                   --  Runs the backup copy job from Subclient
 
     restore_out_of_place()              --  Restores the files/folders specified in the input paths list
                                             to the input client, at the specified destionation location
-
-	catalog_acl()                       --  To enable/disable ACL on the subclient
 
 FileSystemSubclient Instance Attributes:
 =======================================
@@ -96,7 +86,6 @@ from past.builtins import basestring
 
 from ..subclient import Subclient
 from ..exception import SDKException
-from ..job import Job
 
 
 def _nested_dict(source, update_dict):
@@ -166,10 +155,6 @@ class FileSystemSubclient(Subclient):
                     "contentOperationType": 1
                 }
         }
-
-        if 'isDDBSubclient' in self._fs_subclient_prop:
-            if self._fs_subclient_prop['isDDBSubclient']:
-                del subclient_json["subClientProperties"]["content"]
         return subclient_json
 
     @property
@@ -475,85 +460,6 @@ class FileSystemSubclient(Subclient):
             trueup_option_value
         )
 
-    def run_backup_copy(self):
-        """
-        Runs the backup copy from Commcell for the given subclient
-
-        Args:
-                None
-
-        Returns:
-                object - instance of the Job class for this backup copy job
-        Raises:
-            SDKException:
-
-                    if backup copy job failed
-
-                    if response is empty
-
-                    if response is not success
-        """
-        request_json = {
-            "taskInfo": {
-                "associations": [
-                    {
-                        "clientName": self._client_object._client_name,
-                        "subclientName": self._subclient_name,
-                        "backupsetName": self._backupset_object._backupset_name,
-                        "storagePolicyName": self.storage_policy,
-                        "_type_": 17,
-                        "appName": self._agent_object._agent_name
-                    }
-                ],
-                "task": {
-                    "taskType": 1,
-                    "initiatedFrom": 1,
-                    "taskId": 0,
-                    "taskFlags": {
-                        "disabled": False
-                    }
-                },
-                "subTasks": [
-                    {
-                        "subTaskOperation": 1,
-                        "subTask": {
-                            "subTaskType": 1,
-                            "operationType": 4028
-                        },
-                        "options": {
-                            "adminOpts": {
-                                "snapToTapeOption": {
-                                    "allowMaximum": True,
-                                    "noofJobsToRun": 1
-                                }
-                            }
-                        }
-                    }
-                ]
-            }
-        }
-
-        backup_copy = self._commcell_object._services['CREATE_TASK']
-        flag, response = self._commcell_object._cvpysdk_object.make_request(
-            'POST', backup_copy, request_json)
-
-        if flag:
-            if response.json():
-                if "jobIds" in response.json():
-                    return Job(self._commcell_object, response.json()['jobIds'][0])
-                elif "errorCode" in response.json():
-                    error_message = response.json()['errorMessage']
-
-                    o_str = 'Backup copy job failed\nError: "{0}"'.format(error_message)
-                    raise SDKException('Subclient', '118', o_str)
-                else:
-                    raise SDKException('Subclient', '118', 'Failed to run the backup copy job')
-            else:
-                raise SDKException('Response', '102')
-        else:
-            response_string = self._commcell_object._update_response_(response.text)
-            raise SDKException('Response', '101', response_string)
-
     @property
     def backup_retention(self):
         """return if backup retention is enabled or not
@@ -603,6 +509,7 @@ class FileSystemSubclient(Subclient):
 
         return self._fsSubClientProp['blockLevelBackup']
 
+
     @block_level_backup_option.setter
     def block_level_backup_option(self, block_level_backup_value):
         """Creates the JSON with the specified blocklevel flag
@@ -641,6 +548,8 @@ class FileSystemSubclient(Subclient):
         self._set_subclient_properties(
             "_fsSubClientProp['createFileLevelIndexDuringBackup']",
             create_file_level_index_value)
+
+
 
     @property
     def backup_retention_days(self):
@@ -704,59 +613,8 @@ class FileSystemSubclient(Subclient):
         """
         Enables the system state property for the subclient
         """
-        self._set_subclient_properties(
-            "_fsSubClientProp['backupSystemState']",
-            backup_system_state)
-
-    @property
-    def onetouch_option(self):
-        """Checks whether the onetouch option is enabled
-
-        Returns:
-            True    -   if system state property is enabled for the subclient
-
-            False   -   if system state property is not enabled for the subclient
-        """
-        return self._fsSubClientProp.get('oneTouchSubclient')
-
-    @onetouch_option.setter
-    def onetouch_option(self, backup_onetouch):
-        """
-        Enables the system state property for the subclient
-        """
-        self._set_subclient_properties("_fsSubClientProp['oneTouchSubclient']", backup_onetouch)
-
-    @property
-    def onetouch_server(self):
-        """
-        Returns: Onetouch Server Name
-        """
-        return self._fsSubClientProp.get('oneTouchServer', {}).get('clientName')
-
-    @onetouch_server.setter
-    def onetouch_server(self, onetouch_server):
-        """
-        Sets the onetouch server property
-        """
-        self._set_subclient_properties(
-            "_fsSubClientProp['oneTouchServer']['clientName']",
-            onetouch_server)
-
-    @property
-    def onetouch_server_directory(self):
-        """
-        Returns the onetouch server directory
-        """
-        return self._fsSubClientProp.get('oneTouchServerDirectory')
-
-    @onetouch_server_directory.setter
-    def onetouch_server_directory(self, onetouch_server_directory):
-        """
-        Sets the onetouch server directory
-        """
-        self._set_subclient_properties(
-            "_fsSubClientProp['oneTouchServerDirectory']",
-            onetouch_server_directory)
+        self._set_subclient_properties("_fsSubClientProp['backupSystemState']",
+                                        backup_system_state )
 
     @property
     def trueup_days(self):
@@ -980,7 +838,7 @@ class FileSystemSubclient(Subclient):
 
         """
         if isinstance(rules, dict):
-            value = {'diskCleanupRules': rules}
+            value = {'diskCleanupRules':rules}
             self._set_subclient_properties("_fs_subclient_prop", value)
         else:
             raise SDKException(
@@ -1148,10 +1006,8 @@ class FileSystemSubclient(Subclient):
 
             Accepted Values:
                 1. `OFF`
-
-                2. `ON`
-
-                3. `USE CELL LEVEL POLICY`
+				2. `ON`
+				3. `USE CELL LEVEL POLICY`
         """
         if not isinstance(value, basestring):
             raise SDKException('Subclient', '101')
@@ -1210,6 +1066,7 @@ class FileSystemSubclient(Subclient):
         else:
             raise SDKException('Subclient', '102', "The parameter should be dictionary")
 
+
     @property
     def software_compression(self):
         """Gets the software compression status for this subclient.
@@ -1223,8 +1080,9 @@ class FileSystemSubclient(Subclient):
         """
         return self._fsSubClientProp['commonProperties']['storageDevice']['softwareCompression']
 
+
     @software_compression.setter
-    def software_compression(self, sw_compression_value):
+    def software_compression(self,sw_compression_value):
         """Updates the software compression property for a subclient.
 
             Args:
@@ -1240,11 +1098,12 @@ class FileSystemSubclient(Subclient):
 
                     if software_compression_value is invalid
         """
-        if isinstance(sw_compression_value, int) and sw_compression_value in range(1, 5):
+        if isinstance(sw_compression_value, int) and sw_compression_value in range(1,5):
             attr_name = "_commonProperties['storageDevice']['softwareCompression']"
             self._set_subclient_properties(attr_name, sw_compression_value)
         else:
             raise SDKException('Subclient', '102', 'Invalid value for software compression type.')
+
 
     def find_all_versions(self, *args, **kwargs):
         """Searches the content of a Subclient.
@@ -1484,48 +1343,20 @@ class FileSystemSubclient(Subclient):
                 destPath=destination_path,
                 restore_option=fs_options)
 
-            request_json['taskInfo']['subTasks'][0]['options']['restoreOptions'].update(
-                self._vlr_restore_options_dict)
+            request_json['taskInfo']['subTasks'][0]['options']['restoreOptions'].update(self._vlr_restore_options_dict)
             request_json['taskInfo']['subTasks'][0]['options']['restoreOptions']['destination']['destPath'][0] = \
-                destination_path
+                                                                                        destination_path
             request_json['taskInfo']['subTasks'][0]['options']['restoreOptions']['destination']['inPlace'] = False
 
             return self._process_restore_response(request_json)
 
         else:
-            return super(FileSystemSubclient, self).restore_out_of_place(
-                client=client,
-                destination_path=destination_path,
-                paths=paths,
-                overwrite=overwrite,
-                restore_data_and_acl=restore_data_and_acl,
-                copy_precedence=copy_precedence,
-                from_time=from_time,
-                to_time=to_time,
-                fs_options=fs_options)
-
-    @property
-    def catalog_acl(self):
-        """Gets the catalog acl option
-
-        Returns:
-            true  - if catalog acl is enbaled on the subclient
-
-            false - if catalog acl disabled on the subclient
-        """
-
-        return self._fsSubClientProp['catalogACL']
-
-    @catalog_acl.setter
-    def catalog_acl(self, value):
-        """
-        To enable or disable catalog_acl
-        Args:
-
-            value   (bool)  -- To enable or disbale catalog acl
-        """
-
-        if isinstance(value, bool):
-            self._set_subclient_properties("_fsSubClientProp['catalogACL']", value)
-        else:
-            raise SDKException('Subclient', '102', 'argument value should be boolean')
+            return super(FileSystemSubclient, self).restore_out_of_place(client=client,
+                                                                         destination_path=destination_path,
+                                                                         paths=paths,
+                                                                         overwrite=overwrite,
+                                                                         restore_data_and_acl=restore_data_and_acl,
+                                                                         copy_precedence=copy_precedence,
+                                                                         from_time=from_time,
+                                                                         to_time=to_time,
+                                                                         fs_options=fs_options)
