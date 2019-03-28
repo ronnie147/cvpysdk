@@ -83,6 +83,9 @@ Organization
 
     disable_auth_code()         --  disable Auth Code generation for the organization
 
+    activate()                  --  To activate the organization
+
+    deactivate()                --  To deactivate the organization
 
 Organization Attributes
 -----------------------
@@ -120,7 +123,6 @@ Organization Attributes
 
         **plans = ['plan1',
         'plan2']**                  --  update the list of plans associated with the organization
-
 
 """
 
@@ -201,13 +203,12 @@ class Organizations:
 
         if value in self.all_organizations:
             return self.all_organizations[value]
-        else:
-            try:
-                return list(
-                    filter(lambda x: x[1]['id'] == value, self.all_organizations.items())
-                )[0][0]
-            except IndexError:
-                raise IndexError('No organization exists with the given Name / Id')
+        try:
+            return list(
+                filter(lambda x: x[1]['id'] == value, self.all_organizations.items())
+            )[0][0]
+        except IndexError:
+            raise IndexError('No organization exists with the given Name / Id')
 
     def _get_organizations(self):
         """Gets all the organizations associated with the Commcell environment.
@@ -241,9 +242,8 @@ class Organizations:
                     organizations[name] = organization_id
 
             return organizations
-        else:
-            response_string = self._update_response_(response.text)
-            raise SDKException('Response', '101', response_string)
+        response_string = self._update_response_(response.text)
+        raise SDKException('Response', '101', response_string)
 
     @property
     def all_organizations(self):
@@ -407,10 +407,9 @@ class Organizations:
 
                 if error_code == 0:
                     return self.get(name)
-                else:
-                    raise SDKException(
-                        'Organization', '107', 'Response: {0}'.format(response.json())
-                    )
+                raise SDKException(
+                    'Organization', '107', 'Response: {0}'.format(response.json())
+                )
 
             elif 'errorMessage' in response.json():
                 raise SDKException(
@@ -445,8 +444,7 @@ class Organizations:
 
         if self.has_organization(name):
             return Organization(self._commcell_object, name, self._organizations[name])
-        else:
-            raise SDKException('Organization', '103')
+        raise SDKException('Organization', '103')
 
     def delete(self, name):
         """Deletes the organization with the given name from the Commcell.
@@ -470,6 +468,8 @@ class Organizations:
         """
         if not self.has_organization(name):
             raise SDKException('Organization', '103')
+
+        self.get(name).deactivate()
 
         organization_id = self._organizations[name.lower()]
 
@@ -862,3 +862,81 @@ class Organization:
             self._update_properties()
         except KeyError:
             raise SDKException('Organization', '109')
+
+    def activate(self):
+        """
+        To activate the organization
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            SDKException:
+                if failed to activate the organization
+
+                if response is empty
+
+                if response is not success
+
+        """
+        flag, response = self._cvpysdk_object.make_request(
+            'POST', self._services['ACTIVATE_ORGANIZATION'] % self.organization_id
+        )
+
+        if flag:
+            if response.json():
+                error_code = response.json()['response']['errorCode']
+
+                if error_code != 0:
+                    raise SDKException(
+                        'Organization', '112', 'Error: "{0}"'.format(
+                            response.json()['error']['errorMessage']
+                        )
+                    )
+            else:
+                raise SDKException('Response', '102')
+        else:
+            response_string = self._update_response_(response.text)
+            raise SDKException('Response', '101', response_string)
+
+    def deactivate(self):
+        """
+        To deactivate the organization
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            SDKException:
+                if failed to deactivate the organization
+
+                if response is empty
+
+                if response is not success
+
+        """
+        flag, response = self._cvpysdk_object.make_request(
+            'POST', self._services['DEACTIVATE_ORGANIZATION'] % self.organization_id
+        )
+
+        if flag:
+            if response.json():
+                error_code = response.json()['response']['errorCode']
+
+                if error_code != 0:
+                    raise SDKException(
+                        'Organization', '113', 'Error: "{0}"'.format(
+                            response.json()['error']['errorMessage']
+                        )
+                    )
+            else:
+                raise SDKException('Response', '102')
+        else:
+            response_string = self._update_response_(response.text)
+            raise SDKException('Response', '101', response_string)

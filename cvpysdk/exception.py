@@ -269,7 +269,9 @@ EXCEPTION_DICT = {
         '109': 'Failed to disable Auth Code Generation for the Organization',
         '110': 'Failed to update the properties of the Organization',
         '111': ('Plan is not associated with the organization. '
-                'Add plan to the Organization, and then set it as the default')
+                'Add plan to the Organization, and then set it as the default'),
+        '112': 'Failed to activate organization',
+        '113': 'Failed to deactivate organization'
     },
     'StoragePool': {
         '101': 'Data type of the input(s) is not valid',

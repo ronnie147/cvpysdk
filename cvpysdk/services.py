@@ -207,6 +207,8 @@ SERVICES_DICT_TEMPLATE = {
     'ORGANIZATION': '{0}Organization/%s',
     'UPDATE_ORGANIZATION': '{0}Organization?organizationId=%s',
     'GENERATE_AUTH_CODE': '{0}Organization/%s/Authtoken',
+    'ACTIVATE_ORGANIZATION': '{0}Organization/%s/action/activate',
+    'DEACTIVATE_ORGANIZATION': '{0}Organization/%s/action/deactivate',
 
     'STORAGE_POOL': '{0}StoragePool',
     'GET_STORAGE_POOL': '{0}StoragePool/%s',
@@ -264,7 +266,7 @@ SERVICES_DICT_TEMPLATE = {
     'PUSH_TOPOLOGY': '{0}FirewallTopology/%s/Push',
 
     'ADVANCED_JOB_DETAIL_TYPE': '{0}Job/%s/AdvancedDetails?infoType=%s',
-    
+
     'CERTIFICATES': '{0}CommServ/Certificates',
 
     'GET_DAG_MEMBER_SERVERS': '{0}Exchange/DAG/%s/PseudoClientInfo',  # only for Exchange DAG
