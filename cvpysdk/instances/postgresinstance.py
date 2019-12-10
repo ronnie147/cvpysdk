@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """File for operating on a POSTGRESQL Instance.
@@ -450,11 +440,20 @@ class PostgreSQLInstance(Instance):
             redirect_path=redirect_path,
             restore_to_disk=restore_to_disk,
             index_free_restore=index_free_restore,
-            destination_path=destination_path,
-            restore_jobs=restore_to_disk_job)
+            destination_path=destination_path)
 
         if volume_level_restore:
             request_json['taskInfo']['subTasks'][0]['options'][
                 'restoreOptions']['destination']["noOfStreams"] = no_of_streams
+
+        if restore_to_disk:
+            #### add jobIds and change operationType in subtask
+            request_json['taskInfo']['subTasks'][0]['subTask']['operationType'] = 1005
+            if not isinstance(restore_to_disk_job, list):
+                raise SDKException('Instance', '101')
+            if restore_to_disk_job is None:
+                raise Exception("Job ID needs to be passed for restore to disk operation.")
+            request_json['taskInfo'][
+                'subTasks'][0]['options']['restoreOptions']['jobIds'] = restore_to_disk_job
 
         return self._process_restore_response(request_json)

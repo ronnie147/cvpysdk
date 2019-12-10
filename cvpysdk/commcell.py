@@ -2,19 +2,10 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
+
 """Main file for performing operations on Commcell via REST API.
 
 Commcell is the main class for the CVPySDK python package.
@@ -73,8 +64,6 @@ Commcell:
     for installation on the commcell
 
     execute_qcommand()              --  executes the ExecuteQCommand API on the commcell
-
-    add_associations_to_saml_app()  --  Adds the given user under associations of the SAML app
 
     _get_registered_service_commcells() -- gets the list of registered service commcells
 
@@ -206,19 +195,9 @@ Commcell instance Attributes
     **identity_management**     --  returns the instance of the 'IdentityManagementApps
     class to perform identity management operations on the commcell class
 
-    **system**                  --  returns the instance of the 'System' class to perform
-    system related operations on the commcell
-
     **commcell_migration**      --  returns the instance of the 'CommCellMigration' class,
     to interact with the Commcell Export & Import on the Commcell
 
-    **backup_network_pairs**    --  returns the instance of 'BackupNetworkPairs' class to
-    perform backup network pairs operations on the commcell class
-
-    **recovery_targets**        -- Returns the instance of RecoverTargets class
-
-    **reports**                 --  Return the instance of Report class
-    
 """
 
 from __future__ import absolute_import
@@ -261,21 +240,18 @@ from .storage_pool import StoragePools
 from .monitoring import MonitoringPolicies
 from .policy import Policies
 from .schedules import SchedulePattern
-from .schedules import Schedule, Schedules
+from .schedules import Schedule
 from .activitycontrol import ActivityControl
 from .eventviewer import Events
 from .array_management import ArrayManagement
 from .disasterrecovery import DisasterRecovery
 from .operation_window import OperationWindow
 from .identity_management import IdentityManagementApps
-from .system import System
 from .commcell_migration import CommCellMigration
 from .deployment.download import Download
 from .deployment.install import Install
 from .name_change import NameChange
-from .backup_network_pairs import BackupNetworkPairs
-from .reports import report
-from .recovery_targets import RecoveryTargets
+
 
 USER_LOGGED_OUT_MESSAGE = 'User Logged Out. Please initialize the Commcell object again.'
 """str:     Message to be returned to the user, when trying the get the value of an attribute
@@ -463,13 +439,9 @@ class Commcell(object):
         self._operation_window = None
         self._commserv_client = None
         self._identity_management = None
-        self._system = None
         self._commcell_migration = None
         self._registered_commcells = None
         self._redirect_rules_service = None
-        self._backup_network_pairs = None
-        self._reports = None
-        self._recovery_targets = None
 
         self.refresh()
 
@@ -547,14 +519,13 @@ class Commcell(object):
         del self._operation_window
         del self._commserv_client
         del self._identity_management
-        del self._system
+
         del self._web_service
         del self._cvpysdk_object
         del self._device_id
         del self._services
         del self._disaster_recovery
         del self._commcell_migration
-        del self._backup_network_pairs
         del self
 
     def _get_commserv_details(self):
@@ -687,11 +658,6 @@ class Commcell(object):
 
             Args:
                 request_json (str)   --  request json that is to be passed
-
-                    Sample: {
-                                "name": "",
-                                "value": ""
-                            }
 
             Returns:
                 dict                --   json response received from the server
@@ -1070,17 +1036,6 @@ class Commcell(object):
             return USER_LOGGED_OUT_MESSAGE
 
     @property
-    def system(self):
-        """Returns the instance of the System class."""
-        try:
-            if self._system is None:
-                self._system = System(self)
-
-            return self._system
-        except AttributeError:
-            return USER_LOGGED_OUT_MESSAGE
-
-    @property
     def commserv_client(self):
         """Returns the instance of the Client class for the CommServ client."""
         if self._commserv_client is None:
@@ -1128,40 +1083,6 @@ class Commcell(object):
         if self._redirect_rules_service is None:
             self._redirect_rules_service = self._get_redirect_rules_service_commcell()
         return self._redirect_rules_service
-
-    @property
-    def recovery_targets(self):
-        """Returns the instance of RecoverTargets class"""
-        try:
-            if self._recovery_targets is None:
-                self._recovery_targets = RecoveryTargets(self)
-
-            return self._recovery_targets
-
-        except AttributeError:
-            return USER_LOGGED_OUT_MESSAGE
-
-    @property
-    def backup_network_pairs(self):
-        """Returns the instance of BackupNetworkPairs class"""
-        try:
-            if self._backup_network_pairs is None:
-                self._backup_network_pairs = BackupNetworkPairs(self)
-
-            return self._backup_network_pairs
-
-        except AttributeError:
-            return USER_LOGGED_OUT_MESSAGE
-
-    @property
-    def reports(self):
-        """Returns the instance of the Report class"""
-        try:
-            if self._reports is None:
-                self._reports = report.Report(self)
-            return self._reports
-        except AttributeError:
-            return USER_LOGGED_OUT_MESSAGE
 
     def logout(self):
         """Logs out the user associated with the current instance."""
@@ -1400,7 +1321,7 @@ class Commcell(object):
                     raise SDKException('Commcell', '105', o_str)
 
                 elif "taskId" in response.json():
-                    return Schedules(self._commcell_object).get(task_id=response.json()['taskId'])
+                    return Schedule(self, schedule_id=response.json()['taskId'])
 
                 else:
                     raise SDKException('Commcell', '105')
@@ -1876,38 +1797,6 @@ class Commcell(object):
             return response
         else:
             raise SDKException('Response', '101', self._update_response_(response.text))
-
-    def add_associations_to_saml_app(self, saml_app_name, saml_app_key, props, user_to_be_added):
-        """adds the given  user under associations tab of the saml app
-            Args:
-                saml_app_name   (str)   : SAML app name to add associations for
-
-                saml_app_key    (str)   :app key of the SAML app
-
-                props   (str)   :properties to be included in the XML request
-
-                user_to_be_added    (str)   : user to be associated with
-
-            Raises:
-                SDKException:
-                    if input data is invalid
-
-                    if response is empty
-
-                    if response is not success
-        """
-
-        xml_execute_command = """
-            <App_SetClientThirdPartyAppPropReq opType="3">
-            <clientThirdPartyApps appDescription="" appKey="{0}" appName="{1}" appType="2" flags="2" isCloudApp="0" isEnabled="1">
-                {2}
-                <UserMappings/>
-                <assocTree _type_="13" userName="{3}"/>
-            </clientThirdPartyApps>
-        </App_SetClientThirdPartyAppPropReq> 
-        	"""\
-            .format(str(saml_app_key), saml_app_name, props, user_to_be_added)
-        self._qoperation_execute(xml_execute_command)
 
     def _get_registered_service_commcells(self):
         """Gets the registered routing commcells

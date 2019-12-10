@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """File for operating on a MYSQL Subclient
@@ -25,9 +15,6 @@ MYSQLSubclient: Derived class from Subclient Base class, representing a MYSQL su
 
 MYSQLSubclient:
     __init__()                          --  constructor for the class
-
-    is_failover_to_production()         --  Sets the isFailOverToProduction flag for the
-    subclient as the value provided as input
 
     _backup_request_json()              --  prepares the json for the backup request
 
@@ -51,10 +38,6 @@ MYSQLSubclient instance Attributes:
 
     **is_blocklevel_backup_enabled**    --  Returns True if block level backup is
     enabled else returns false
-
-    **is_proxy_enabled**                --  Returns True if proxy is enabled in the subclient
-
-    **is_failover_to_production**       --  Returns the isFailOverToProduction flag of the subclient
 
     **content**                         --  Returns the appropriate content from
     the Subclient relevant to the user
@@ -106,86 +89,19 @@ class MYSQLSubclient(Subclient):
         return bool(self._subclient_properties.get(
             'mySqlSubclientProp', {}).get('isUseBlockLevelBackup', False))
 
-    @property
-    def is_proxy_enabled(self):
-        """Returns True if proxy is enabled in the subclient
-
-        Returns:
-            (bool) - boolean value based on proxy enable status
-
-                    True if proxy is enabled
-                    False if proxy is not enabled
-
-        """
-        return self._subclient_properties.get(
-            'mySqlSubclientProp', {}).get('proxySettings', {}).get(
-                'isProxyEnabled', False)
-
-    @property
-    def is_failover_to_production(self):
-        """Returns the isFailOverToProduction flag of the subclient.
-
-        Returns:
-
-            (bool)  --  True if flag is set
-                        False if the flag is not set
-
-        """
-        return self._subclient_properties.get(
-            'mySqlSubclientProp', {}).get(
-                'proxySettings', {}).get('isFailOverToProduction', False)
-
-    @is_failover_to_production.setter
-    def is_failover_to_production(self, value):
-        """Sets the isFailOverToProduction flag for the subclient as the value provided as input.
-
-        Args:
-
-            value   (bool)  --  Boolean value to set as flag
-
-            Raises:
-                SDKException:
-                    if failed to set isFailOverToProduction flag
-
-                    if the type of value input is not bool
-        """
-        if isinstance(value, bool):
-            self._set_subclient_properties(
-                "_subclient_properties['mySqlSubclientProp']\
-                ['proxySettings']['isFailOverToProduction']",
-                value)
-        else:
-            raise SDKException(
-                'Subclient', '102', 'Expecting a boolean value here'
-            )
-
     def _backup_request_json(
             self,
             backup_level,
-            inc_with_data=False,
-            truncate_logs_on_source=False,
-            do_not_truncate_logs=False):
+            inc_with_data=False):
         """
         prepares the json for the backup request
 
             Args:
-                backup_level            (list)  --  level of backup the user wish to run
-
-                    Accepted Values:
+                backup_level        (list)  --  level of backup the user wish to run
                         Full / Incremental / Differential
 
-                inc_with_data           (bool)  --  flag to determine if the incremental backup
+                inc_with_data       (bool)  --  flag to determine if the incremental backup
                 includes data or not
-
-                truncate_logs_on_source (bool)  --  flag to determine if the logs to be
-                truncated on master client
-
-                    default: False
-
-                do_not_truncate_logs    (bool)  --  flag to determine if the proxy logs
-                needs to be truncated or not
-
-                    default: False
 
             Returns:
                 dict - JSON request to pass to the API
@@ -193,31 +109,32 @@ class MYSQLSubclient(Subclient):
         """
         request_json = self._backup_json(backup_level, False, "BEFORE_SYNTH")
 
-        backup_options = {
-            "truncateLogsOnSource":truncate_logs_on_source,
-            "sybaseSkipFullafterLogBkp":False,
-            "notSynthesizeFullFromPrevBackup":False,
-            "incrementalDataWithLogs":inc_with_data,
-            "backupLevel":backup_level,
-            "incLevel":"NONE",
-            "adHocBackup":False,
-            "runIncrementalBackup":False,
-            "doNotTruncateLog":do_not_truncate_logs,
-            "dataOpt":{
-                "skipCatalogPhaseForSnapBackup":True,
-                "createBackupCopyImmediately":True,
-                "useCatalogServer":True,
-                "followMountPoints":False,
-                "enforceTransactionLogUsage":False,
-                "skipConsistencyCheck":False,
-                "createNewIndex":False
-            },
-            "mediaOpt":{
+        if "incremental" in backup_level.lower() and inc_with_data:
+            backup_options = {
+                "truncateLogsOnSource":False,
+                "sybaseSkipFullafterLogBkp":False,
+                "notSynthesizeFullFromPrevBackup":False,
+                "incrementalDataWithLogs":True,
+                "backupLevel":backup_level,
+                "incLevel":"NONE",
+                "adHocBackup":False,
+                "runIncrementalBackup":False,
+                "doNotTruncateLog":False,
+                "dataOpt":{
+                    "skipCatalogPhaseForSnapBackup":True,
+                    "createBackupCopyImmediately":True,
+                    "useCatalogServer":True,
+                    "followMountPoints":False,
+                    "enforceTransactionLogUsage":False,
+                    "skipConsistencyCheck":False,
+                    "createNewIndex":False
+                },
+                "mediaOpt":{
 
+                }
             }
-        }
-        request_json["taskInfo"]["subTasks"][0]["options"][
-            "backupOpts"] = backup_options
+            request_json["taskInfo"]["subTasks"][0]["options"][
+                "backupOpts"] = backup_options
 
         return request_json
 
@@ -305,9 +222,7 @@ class MYSQLSubclient(Subclient):
     def backup(
             self,
             backup_level="Differential",
-            inc_with_data=False,
-            truncate_logs_on_source=False,
-            do_not_truncate_logs=False):
+            inc_with_data=False):
         """Runs a backup job for the subclient of the level specified.
 
             Args:
@@ -318,16 +233,6 @@ class MYSQLSubclient(Subclient):
 
                 inc_with_data       (bool)  --  flag to determine if the incremental backup
                 includes data or not
-
-                truncate_logs_on_source (bool)  --  flag to determine if the logs to be
-                truncated on master client
-
-                    default: False
-
-                do_not_truncate_logs    (bool)  --  flag to determine if the proxy logs
-                needs to be truncated or not
-
-                    default: False
 
             Returns:
                 object - instance of the Job class for this backup job
@@ -346,13 +251,10 @@ class MYSQLSubclient(Subclient):
         if backup_level not in ['full', 'incremental', 'differential', 'synthetic_full']:
             raise SDKException('Subclient', '103')
 
-        if not (inc_with_data or truncate_logs_on_source or do_not_truncate_logs):
+        if not inc_with_data:
             return super(MYSQLSubclient, self).backup(backup_level)
         request_json = self._backup_request_json(
-            backup_level,
-            inc_with_data,
-            truncate_logs_on_source=truncate_logs_on_source,
-            do_not_truncate_logs=do_not_truncate_logs)
+            backup_level, inc_with_data)
         flag, response = self._commcell_object._cvpysdk_object.make_request(
             'POST', self._commcell_object._services['CREATE_TASK'], request_json
         )
@@ -373,9 +275,7 @@ class MYSQLSubclient(Subclient):
             media_agent=None,
             table_level_restore=False,
             clone_env=False,
-            clone_options=None,
-            redirect_enabled=False,
-            redirect_path=None):
+            clone_options=None):
         """Restores the mysql data/log files specified in the input paths list to the same location.
 
             Args:
@@ -438,16 +338,6 @@ class MYSQLSubclient(Subclient):
 
                                      }
 
-                redirect_enabled         (bool)  --  boolean to specify if redirect restore is
-                enabled
-
-                    default: False
-
-                redirect_path           (str)   --  Path specified in advanced restore options
-                in order to perform redirect restore
-
-                    default: None
-
             Returns:
                 object - instance of the Job class for this restore job
 
@@ -491,7 +381,5 @@ class MYSQLSubclient(Subclient):
             media_agent=media_agent,
             table_level_restore=table_level_restore,
             clone_env=clone_env,
-            clone_options=clone_options,
-            redirect_enabled=redirect_enabled,
-            redirect_path=redirect_path
+            clone_options=clone_options
         )

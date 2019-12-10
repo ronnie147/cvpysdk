@@ -17,116 +17,67 @@
 # --------------------------------------------------------------------------
 
 """Main file for performing instance operations.
-
 Instances and Instance are 2 classes defined in this file.
-
 Instances:  Class for representing all the instances associated with a specific agent
-
 Instance:   Class for a single instance selected for an agent,
 and to perform operations on that instance
-
-
 Instances:
     __init__(agent_object)          --  initialise object of Instances class associated with
     the specified agent
-
     __str__()                       --  returns all the instances associated with the agent
-
     __repr__()                      --  returns the string for the object of the Instances class
-
     __len__()                       --  returns the number of instances associated to the Agent
-
     __getitem__()                   --  returns the name of the instance for the given instance ID
     or the details for the given instance name
-
     _get_instances()                --  gets all the instances associated with the agent specified
-
     all_instances()                 --  returns the dict of all the instances
-
     has_instance(instance_name)     --  checks if a instance exists with the given name or not
-
     get(instance_name)              --  returns the Instance class object
     of the input backup set name
-
     add_informix_instance()         --  adds new Informix Instance to given Client
-
     delete()                        --  deletes the instance specified by the instance_name
     from the agent.
-
     add_sybase_instance()           --  To add sybase server instance
-
     add_big_data_apps_instance()    --  To add an instance with the big data apps agent specified
-
     add_cloud_storage_instance()    --  Method to add a new cloud storage instance
-
     _set_general_properties_json()  --  setter for general cloud properties while adding a new
     cloud storage instance
-
     _set_instance_properties_json() --  setter for cloud storage instance properties while adding a
     new cloud storage instance
-
     refresh()                       --  refresh the instances associated with the agent
-
-
 Instance:
     __init__()                      --  initialise object of Instance with the specified instance
     name and id, and associated to the specified agent
-
     __repr__()                      --  return the instance name, the object is associated with
-
     _get_instance_id()              --  method to get the instance id, if not specified in __init__
-
     _get_instance_properties()      --  method to get the properties of the instance
-
     _process_update_response()      --  updates the instance properties
-
     _process_restore_response()     --  processes the restore request sent to server
     and returns the restore job object
-
     _filter_paths()                 --  filters the path as per the OS, and the Agent
-
     _impersonation_json()           --  setter for impersonation Property
-
     _restore_browse_option_json()   --  setter for  browse option  property in restore
-
     _restore_commonOptions_json()   --  setter for common options property in restore
-
     _restore_destination_json()     --  setter for destination options property in restore
-
     _restore_fileoption_json()      --  setter for file option property in restore
-
     _restore_destination_json()     --  setter for destination property in restore
-
     _restore_volume_rst_option_json()  --  setter for the volumeRst restore option in restore JSON
-
     _restore_json()                 --  returns the apppropriate JSON request to pass for either
     Restore In-Place or Out-of-Place operation
-
     _restore_in_place()             --  Restores the files/folders specified in the
     input paths list to the same location
-
     _restore_out_of_place()         --  Restores the files/folders specified in the input paths
     list to the input client, at the specified destination location
-
     _task()                         --  the task dict used while restore/backup job
-
     _restore_sub_task()             --  the restore job specific sub task dict used to form
     restore json
-
     _process_update_request()       --  to process the request using API call
-
     update_properties()             --  to update the instance properties
-
     instance_id()                   --  id of this instance
-
     instance_name()                 --  name of this instance
-
     browse()                        --  browse the content of the instance
-
     find()                          --  find content in the instance
-
     refresh()                       --  refresh the properties of the instance
-
 """
 
 from __future__ import absolute_import
@@ -141,7 +92,7 @@ from .job import Job
 from .subclient import Subclients
 from .constants import AppIDAType
 from .exception import SDKException
-from .schedules import SchedulePattern, Schedules
+from .schedules import SchedulePattern, Schedule, Schedules
 
 
 class Instances(object):
@@ -149,10 +100,8 @@ class Instances(object):
 
     def __init__(self, agent_object):
         """Initialize object of the Instances class.
-
             Args:
                 agent_object (object)  --  instance of the Agent class
-
             Returns:
                 object - instance of the Instances class
         """
@@ -172,7 +121,6 @@ class Instances(object):
         self._general_properties = None
         self._instance_properties = None
         self._instances = None
-        self._vs_instance_type_dict = {}
         self.refresh()
 
         from .instances.vsinstance import VirtualServerInstance
@@ -212,7 +160,6 @@ class Instances(object):
 
     def __str__(self):
         """Representation string consisting of all instances of the agent of a client.
-
             Returns:
                 str - string of all the instances of an agent of a client
         """
@@ -239,22 +186,27 @@ class Instances(object):
         """Returns the number of the instances associated to the Agent."""
         return len(self.all_instances)
 
+    def __iter__(self):
+        self.collections = list(self.all_instances)
+        return self
+    
+    def __next__(self):
+        if self.collections:
+            return self.get(self.collections.pop())
+        else:
+            raise StopIteration
+
     def __getitem__(self, value):
         """Returns the name of the instance for the given instance ID or
             the details of the instance for given instance Name.
-
             Args:
                 value   (str / int)     --  Name or ID of the instance
-
             Returns:
                 str     -   name of the instance, if the instance id was given
-
                 dict    -   dict of details of the instance, if instance name was given
-
             Raises:
                 IndexError:
                     no instance exists with the given Name / Id
-
         """
         value = str(value)
 
@@ -270,20 +222,16 @@ class Instances(object):
 
     def _get_instances(self):
         """Gets all the instances associated to the agent specified by agent_object.
-
             Returns:
                 dict - consists of all instances of the agent
                     {
                          "instance1_name": instance1_id,
                          "instance2_name": instance2_id
                     }
-
             Raises:
                 SDKException:
                     if failed to get instances
-
                     if response is empty
-
                     if response is not success
         """
         if 'file system' in self._agent_object.agent_name:
@@ -308,10 +256,10 @@ class Instances(object):
                             temp_name = dictionary['instance']['instanceName'].lower()
                             temp_id = str(dictionary['instance']['instanceId']).lower()
                             return_dict[temp_name] = temp_id
-
-                        if 'vsInstanceType' in dictionary.get('virtualServerInstance', ''):
-                            self._vs_instance_type_dict[str(dictionary['instance']['instanceId'])] = dictionary[
-                                "virtualServerInstance"]["vsInstanceType"]
+                    self._vs_instance_type_dict = {str(vs_instance['instance']['instanceId']):
+                                                   vs_instance["virtualServerInstance"]["vsInstanceType"]
+                                                   for vs_instance in filter(
+                            lambda instance: "virtualServerInstance" in instance, instance_properties)}
 
                     return return_dict
                 elif 'errors' in response.json():
@@ -328,25 +276,20 @@ class Instances(object):
     @property
     def all_instances(self):
         """Returns dict of all the instances associated with the agent
-
             dict - consists of all instances of the agent
                     {
                          "instance1_name": instance1_id,
                          "instance2_name": instance2_id
                     }
-
         """
         return self._instances
 
     def has_instance(self, instance_name):
         """Checks if a instance exists for the agent with the input instance name.
-
             Args:
                 instance_name (str)  --  name of the instance
-
             Returns:
                 bool - boolean output whether the instance exists for the agent or not
-
             Raises:
                 SDKException:
                     if type of the instance name argument is not string
@@ -358,17 +301,13 @@ class Instances(object):
 
     def get(self, instance_name):
         """Returns a instance object of the specified instance name.
-
             Args:
                 instance_name (str/int)  --  name or ID of the instance
-
             Returns:
                 object - instance of the Instance class for the given instance name
-
             Raises:
                 SDKException:
                     if type of the instance name argument is not string or Int
-
                     if no instance exists with the given name
         """
         if isinstance(instance_name, basestring):
@@ -422,16 +361,12 @@ class Instances(object):
                             'storage_policy':'gk_pg_policy',
                             'description':'created from automation'
                         }
-
             Returns:
                 object - instance of the Instance class
-
             Raises:
                 SDKException:
                     if None value in informix options
-
                     if Informix instance with same name already exists
-
                     if given storage policy does not exists in commcell
         """
         if None in informix_options.values():
@@ -528,20 +463,14 @@ class Instances(object):
 
     def delete(self, instance_name):
         """Deletes the instance specified by the instance_name from the agent.
-
             Args:
                 instance_name (str)  --  name of the instance to remove from the agent
-
             Raises:
                 SDKException:
                     if type of the instance name argument is not string
-
                     if failed to delete instance
-
                     if response is empty
-
                     if response is not success
-
                     if no instance exists with the given name
         """
         if not isinstance(instance_name, basestring):
@@ -615,11 +544,8 @@ class Instances(object):
             Raises:
                 SDKException:
                     if None value in sybase options
-
                     if Sybase instance with same name already exists
-
                     if given storage policy does not exists in commcell
-
         """
 
         if None in sybase_options.values():
@@ -725,11 +651,8 @@ class Instances(object):
                     Raises:
                         SDKException:
                             if None value in db2 options
-
                             if db2 instance with same name already exists
-
                             if given storage policy does not exists in commcell
-
         """
         if not all(
                 key in db2_options for key in(
@@ -832,7 +755,6 @@ class Instances(object):
     def add_big_data_apps_instance(self, distributed_options):
         """
             Method to add big data apps instance to the given client.
-
             distributed_options {
                 "instanceName": "ClusterInstance"
                 "MasterNode" : $MASTER_NODE$ (Optional based on cluster Type. If not present set it to "")
@@ -842,7 +764,6 @@ class Instances(object):
                     }
                 ]
             }
-
             Raises:
                 SDKException:
                     if None value in Distributed options
@@ -929,56 +850,25 @@ class Instances(object):
 
     def add_cloud_storage_instance(self, cloud_options):
         """Returns the JSON request to pass to the API for adding a cloud storage instance
-
         Args:
             cloud_options    (dict)    --    Options needed for adding a new cloud storage instance.
-
         Example:
-        Cloud : S3
-        cloud_options = {
-                            'instance_name': 'S3',
-                            'description': 'instance for s3',
-                            'storage_policy':'cs_sp',
-                            'number_of_streams': 2,
-                            'access_node': 'CS',
-                            'accesskey':'AKIAJOMLRIFGP3FQUIKA',
-                            'secretkey':'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',
-                            'cloudapps_type': 's3'
-
+            cloud_options = {
+                'instance_name': 'S3',
+                'description': 'instance for s3',
+                'storage_policy':'cs_sp',
+                'number_of_streams': 2,
+                'access_node': 'CS',
+                'accesskey':'AKIAJOMLRIFGP3FQUIKA',
+                'secretkey':'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',
+                'cloudapps_type': 's3'
             }
-        Cloud : Google Cloud
-        cloud_options = {
-                            'instance_name': 'google_test',
-                            'description': 'instance for google',
-                            'storage_policy':'cs_sp',
-                            'number_of_streams': 2,
-                            'access_node': 'CS',
-                            'cloudapps_type': 'google_cloud'
-                            'host_url':'storage.googleapis.com',
-                            'access_key':'xxxxxx',
-                            'secret_key':'yyyyyy'
-                        }
-        Cloud : Azure Datalake Gen2
-        cloud_options = {
-
-                            'instance_name': 'TestAzureDL',
-                            'access_node': 'CS',
-                            'description': None,
-                            'storage_policy': 'cs_sp',
-                            'accountname': 'xxxxxx',
-                            'accesskey': 'xxxxxx',
-                            'number_of_streams': 1,
-                            'cloudapps_type': 'azureDL'
-                        }
         Returns:
             dict     --   JSON request to pass to the API
         Raises :
             SDKException :
-
                 if cloud storage instance with same name already exists
-
                 if given storage policy does not exist in commcell
-
         """
         if cloud_options.get("instance_name"):
             if self.has_instance(cloud_options.get("instance_name")):
@@ -1007,7 +897,7 @@ class Instances(object):
         else:
             description = ''
 
-        self._instance_properties_json = cloud_options
+        self.instance_properties_json = cloud_options
         request_json = {
             "instanceProperties": {
                 "description": description,
@@ -1016,7 +906,7 @@ class Instances(object):
                     "instanceName": cloud_options.get("instance_name"),
                     "appName": self._agent_object.agent_name,
                 },
-                "cloudAppsInstance": self._instance_properties_json
+                "cloudAppsInstance": self.instance_properties_json
             }
         }
         add_instance = self._commcell_object._services['ADD_INSTANCE']
@@ -1058,19 +948,14 @@ class Instances(object):
     @_general_properties_json.setter
     def _general_properties_json(self, value):
         """setter for general cloud properties in instance JSON.
-
         Args:
-
             value    (dict)    --    options needed to set general cloud properties
-
         Example:
-
             value = {
                 "number_of_streams":1,
                 "access_node":"test",
                 "storage_policy":"policy1"
             }
-
         """
 
         self._general_properties = {
@@ -1095,17 +980,13 @@ class Instances(object):
     @_instance_properties_json.setter
     def _instance_properties_json(self, value):
         """setter for cloud storage instance properties in instance JSON.
-
         Args:
-
             value    (dict)    --    options needed to set cloud storage instance properties
-
         Example:
             value = {
                 "accesskey" : "AKIAJOMLRIFGP3FQUIKA"
                 "secretkey" : " WB3Fo31h28SXJEnHMqoSo/Mq3LJMx1/AxG8YZsLG"
             }
-
         """
 
         self._general_properties_json = value
@@ -1156,34 +1037,6 @@ class Instances(object):
                 "generalCloudProperties": self._general_properties_json
             }
 
-        elif value.get("cloudapps_type") == 'google_cloud':
-            secret_key = b64encode(value.get("secret_key").encode()).decode()
-            self._instance_properties = {
-                "instanceType": 20,
-                "googleCloudInstance": {
-                    "serverName": value.get("host_url"),
-                    "credentials": {
-                        "password": secret_key,
-                        "userName": value.get("access_key")
-                    }
-                },
-                "generalCloudProperties": self._general_properties_json
-            }
-
-        elif value.get("cloudapps_type") == 'azureDL':
-            accesskey = b64encode(value.get("accesskey").encode()).decode()
-            self._instance_properties = {
-                "instanceType": 21,
-                "azureDataLakeInstance": {
-                    "serverName": "dfs.core.windows.net",
-                    "credentials": {
-                        "userName": value.get("accountname"),
-                        "password": accesskey
-                    }
-                },
-                "generalCloudProperties": self._general_properties_json
-            }
-
     def refresh(self):
         """Refresh the instances associated with the Agent of the selected Client."""
         self._instances = self._get_instances()
@@ -1194,15 +1047,11 @@ class Instance(object):
 
     def __init__(self, agent_object, instance_name, instance_id=None):
         """Initialise the instance object.
-
             Args:
                 agent_object    (object)  --  instance of the Agent class
-
                 instance_name   (str)     --  name of the instance
-
                 instance_id     (str)     --  id of the instance
                     default: None
-
             Returns:
                 object - instance of the Instance class
         """
@@ -1233,7 +1082,6 @@ class Instance(object):
 
     def _get_instance_id(self):
         """Gets the instance id associated with this backupset.
-
              Returns:
                 str - id associated with this instance
         """
@@ -1249,11 +1097,9 @@ class Instance(object):
 
     def _get_instance_properties(self):
         """Gets the properties of this instance.
-
             Raises:
                 SDKException:
                     if response is empty
-
                     if response is not success
         """
         # skip GET instance properties api call if instance id is 1
@@ -1296,16 +1142,12 @@ class Instance(object):
     def _set_instance_properties(self, attr_name, value):
         """sets the properties of this sub client.value is updated to instance once when post call
             succeeds.
-
             Args:
                 attr_name   (str)   --  old value of the property. this should be instance variable
-
                 value       (str)   --  new value of the property. this should be instance variable
-
             Raises:
                 SDKException:
                     if failed to update number properties for subclient
-
         """
         try:
             backup = eval('self.%s' % attr_name)        # Take backup of old value
@@ -1332,24 +1174,17 @@ class Instance(object):
 
     def _process_update_response(self, flag, response):
         """Updates the subclient properties with the request provided.
-
             Args:
                 update_request  (str)  --  update request specifying the details to update
-
             Returns:
                 (bool, basestring, basestring):
                     bool -  flag specifies whether success / failure
-
                     str  -  error code received in the response
-
                     str  -  error message received
-
             Raises:
                 SDKException:
                     if failed to update properties
-
                     if response is empty
-
                     if response is not success
         """
         if flag:
@@ -1390,19 +1225,14 @@ class Instance(object):
     def _process_restore_response(self, request_json):
         """Runs the CreateTask API with the request JSON provided for Restore,
             and returns the contents after parsing the response.
-
             Args:
                 request_json    (dict)  --  JSON request to run for the API
-
             Returns:
                 object - instance of the Job class for this restore job
-
             Raises:
                 SDKException:
                     if restore job failed
-
                     if response is empty
-
                     if response is not success
         """
         flag, response = self._cvpysdk_object.make_request('POST', self._RESTORE, request_json)
@@ -1431,16 +1261,12 @@ class Instance(object):
 
     def _filter_paths(self, paths, is_single_path=False):
         """Filters the paths based on the Operating System, and Agent.
-
             Args:
                 paths           (list)  --  list containing paths to be filtered
-
                 is_single_path  (bool)  --  boolean specifying whether to return a single path
                                                 or the entire list
-
             Returns:
                 list    -   if the boolean is_single_path is set to False
-
                 str     -   if the boolean is_single_path is set to True
         """
         for index, path in enumerate(paths):
@@ -1469,10 +1295,8 @@ class Instance(object):
             self,
             **kwargs):
         """Returns the JSON request to pass to the API as per the options selected by the user.
-
             Args:
                 kwargs   (list)  --  list of options need to be set for restore
-
             Returns:
                 dict - JSON request to pass to the API
         """
@@ -1643,29 +1467,20 @@ class Instance(object):
             proxy_client=None,
             restore_jobs=[]):
         """Restores the files/folders specified in the input paths list to the same location.
-
             Args:
                 paths                   (list)  --  list of full paths of files/folders to restore
-
                 overwrite               (bool)  --  unconditional overwrite files during restore
                     default: True
-
                 restore_data_and_acl    (bool)  --  restore data and ACL files
                     default: True
-
                 copy_precedence         (int)   --  copy precedence value of storage policy copy
                     default: None
-
                 from_time           (str)       --  time to retore the contents after
                         format: YYYY-MM-DD HH:MM:SS
-
                     default: None
-
                 to_time           (str)         --  time to retore the contents before
                         format: YYYY-MM-DD HH:MM:SS
-
                     default: None
-
                 fs_options      (dict)          -- dictionary that includes all advanced options
                     options:
                         preserve_level      : preserve level option to set in restore
@@ -1677,23 +1492,16 @@ class Instance(object):
                                                 specified file
                         versions            : list of version numbers to be backed up
                         validate_only       : To validate data backed up for restore
-
                 proxy_client    (str)          -- Proxy client used during FS under NAS operations
-
                 restore_jobs    (list)          --  list of jobs to be restored if the job is index free restore
-
             Returns:
                 object - instance of the Job class for this restore job if its an immediate Job
                          instance of the Schedule class for this restore job if its a scheduled Job
-
             Raises:
                 SDKException:
                     if paths is not a list
-
                     if failed to initialize job
-
                     if response is empty
-
                     if response is not success
         """
         if not (isinstance(paths, list) and
@@ -1735,35 +1543,24 @@ class Instance(object):
             restore_jobs=[]):
         """Restores the files/folders specified in the input paths list to the input client,
             at the specified destionation location.
-
             Args:
                 client                (str/object) --  either the name of the client or
                                                            the instance of the Client
-
                 destination_path      (str)        --  full path of the restore location on client
-
                 paths                 (list)       --  list of full paths of
                                                            files/folders to restore
-
                 overwrite             (bool)       --  unconditional overwrite files during restore
                     default: True
-
                 restore_data_and_acl  (bool)       --  restore data and ACL files
                     default: True
-
                 copy_precedence         (int)   --  copy precedence value of storage policy copy
                     default: None
-
                 from_time           (str)       --  time to retore the contents after
                         format: YYYY-MM-DD HH:MM:SS
-
                     default: None
-
                 to_time           (str)         --  time to retore the contents before
                         format: YYYY-MM-DD HH:MM:SS
-
                     default: None
-
                 fs_options      (dict)          -- dictionary that includes all advanced options
                     options:
                         preserve_level      : preserve level option to set in restore
@@ -1776,27 +1573,18 @@ class Instance(object):
                         versions            : list of version numbers to be backed up
                         media_agent         : Media Agent need to be used for Browse and restore
                         validate_only       : To validate data backed up for restore
-
                 proxy_client    (str)          -- Proxy client used during FS under NAS operations
-
                 restore_jobs    (list)          --  list of jobs to be restored if the job is index free restore
-
             Returns:
                 object - instance of the Job class for this restore job if its an immediate Job
                          instance of the Schedule class for this restore job if its a scheduled Job
-
             Raises:
                 SDKException:
                     if client is not a string or Client instance
-
                     if destination_path is not a string
-
                     if paths is not a list
-
                     if failed to initialize job
-
                     if response is empty
-
                     if response is not success
         """
         from .client import Client
@@ -1842,16 +1630,12 @@ class Instance(object):
 
     def _process_update_request(self, request_json):
         """Runs the Instance update API
-
             Args:
                 request_json    (dict)  -- request json sent as payload
-
             Raises:
                 SDKException:
                     if response is empty
-
                     if response is not success
-
         """
         flag, response = self._cvpysdk_object.make_request(
             'POST', self._INSTANCE, request_json
@@ -1866,24 +1650,17 @@ class Instance(object):
 
     def update_properties(self, properties_dict):
         """Updates the instance properties
-
             Args:
                 properties_dict (dict)  --  instance properties dict which is to be updated
-
             Returns:
                 None
-
             Raises:
                 SDKException:
                     if failed to add
-
                     if response is empty
-
                     if response code is not as expected
-
         **Note** self.properties can be used to get a deep copy of all the properties, modify the properties which you
         need to change and use the update_properties method to set the properties
-
         """
         request_json = {
             "instanceProperties": {
@@ -1940,51 +1717,34 @@ class Instance(object):
 
     def browse(self, *args, **kwargs):
         """Browses the content of the Instance.
-
             Args:
                 Dictionary of browse options:
                     Example:
-
                         browse({
                             'path': 'c:\\\\hello',
-
                             'show_deleted': True,
-
                             'from_time': '2014-04-20 12:00:00',
-
                             'to_time': '2016-04-21 12:00:00'
                         })
-
             Kwargs:
                 Keyword argument of browse options:
                     Example:
-
                         browse(
                             path='c:\\hello',
-
                             show_deleted=True,
-
                             from_time='2014-04-20 12:00:00',
-
                             to_time='2016-04-21 12:00:00'
                         )
-
             Returns:
                 (list, dict)
                     list    -   List of only the file, folder paths from the browse response
-
                     dict    -   Dictionary of all the paths with additional metadata retrieved
                     from browse operation
-
             Raises:
                 SDKException:
                     if there are more than one backupsets in the instance
-
-
             Refer `default_browse_options`_ for all the supported options.
-
             .. _default_browse_options: https://github.com/CommvaultEngg/cvpysdk/blob/master/cvpysdk/backupset.py#L565
-
         """
         # do browse operation if there is only one backupset in the instance
         # raise `SDKException` if there is more than one backupset in the instance
@@ -1999,60 +1759,39 @@ class Instance(object):
     def find(self, *args, **kwargs):
         """Searches a file/folder in the backed up content of the instance,
             and returns all the files matching the filters given.
-
             Args:
                 Dictionary of browse options:
                     Example:
-
                         find({
                             'file_name': '*.txt',
-
                             'show_deleted': True,
-
                             'from_time': '2014-04-20 12:00:00',
-
                             'to_time': '2016-04-31 12:00:00'
                         })
-
             Kwargs:
                 Keyword argument of browse options:
                     Example:
-
                         find(
                             file_name='*.txt',
-
                             show_deleted=True,
-
                             'from_time': '2014-04-20 12:00:00',
-
                             to_time='2016-04-31 12:00:00'
                         )
-
             Returns:
                 (list, dict)
                     list    -   List of only the file, folder paths from the browse response
-
                     dict    -   Dictionary of all the paths with additional metadata retrieved
                     from browse operation
-
             Raises:
                 SDKException:
                     if there are more than one backupsets in the instance
-
-
             Refer `default_browse_options`_ for all the supported options.
-
             Additional options supported:
                 file_name       (str)   --  Find files with name
-
                 file_size_gt    (int)   --  Find files with size greater than size
-
                 file_size_lt    (int)   --  Find files with size lesser than size
-
                 file_size_et    (int)   --  Find files with size equal to size
-
             .. _default_browse_options: https://github.com/CommvaultEngg/cvpysdk/blob/master/cvpysdk/backupset.py#L565
-
         """
         # do find operation if there is only one backupset in the instance
         # raise `SDKException` if there is more than one backupset in the instance
@@ -2155,7 +1894,7 @@ class Instance(object):
             "preserveLevel": value.get("preserve_level", 1),
             "restoreToExchange": False,
             "stripLevel": 0,
-            "restoreACLs": value.get("restore_ACL", value.get("restore_data_and_acl", True)),
+            "restoreACLs": value.get("restore_ACL", True),
             "stripLevelType": value.get("striplevel_type", 0),
             "allVersion": value.get("all_versions", False),
             "unconditionalOverwrite": value.get("unconditional_overwrite", False),

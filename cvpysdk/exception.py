@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """File for handling all the exceptions for the CVPySDK python package.
@@ -168,8 +158,7 @@ EXCEPTION_DICT = {
         '104': 'No records found for this Job',
         '105': 'Failed to get the Job Details',
         '106': 'Unexpected response received from server',
-        '107': 'Job Info Type not passed from AdvancedJobDetailType enum',
-        '108': 'Data type of input(s) is not valid'
+        '107': 'Job Info Type not passed from AdvancedJobDetailType enum'
     },
     'Storage': {
         '101': 'Data type of the input(s) is not valid',
@@ -324,9 +313,7 @@ EXCEPTION_DICT = {
         '101': 'Failed to create a operation window',
         '102': '',
         '103': 'Failed to delete the operation window',
-        '104': 'Failed to list operation windows',
-        '105': 'Failed to modify a operation window',
-        '106': 'Data type of the input(s) is not valid'
+        '104': 'Failed to list operation windows'
     },
     'IdentityManagement': {
         '101': 'Failed to retreive apps',
@@ -379,13 +366,6 @@ EXCEPTION_DICT = {
         '104': 'Datatype of the input is not valid'
     },
     'LiveSync': {
-        '101': 'Data type of the input(s) is not valid',
-        '102': ''
-    },
-    'BackupNetworkPairs': {
-        '101': '',
-    },
-    'Uninstall': {
         '101': 'Data type of the input(s) is not valid',
         '102': ''
     }

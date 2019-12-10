@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 # pylint: disable=R1705
@@ -290,18 +280,12 @@ class CVPySDK(object):
         )
 
         if flag:
-            if 'application/json' in response.headers['Content-Type']:
-                if response.json().get('errorCode', 0) == 0:
-                    return response.json()['user']['userName']
-                else:
-                    raise SDKException('CVPySDK', '107')
-            else:
-                user_dict = xmltodict.parse(response.content)
+            user_dict = xmltodict.parse(response.content)
 
-                if 'CvEntities_ProcessingInstructionInfo' in user_dict:
-                    return user_dict['CvEntities_ProcessingInstructionInfo']['user']['@userName']
-                else:
-                    raise SDKException('CVPySDK', '107')
+            if 'CvEntities_ProcessingInstructionInfo' in user_dict:
+                return user_dict['CvEntities_ProcessingInstructionInfo']['user']['@userName']
+            else:
+                raise SDKException('CVPySDK', '107')
         else:
             response_string = self._commcell_object._update_response_(response.text)
             raise SDKException('Response', '101', response_string)

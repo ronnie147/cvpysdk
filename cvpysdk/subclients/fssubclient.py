@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """File for operating on a File System Subclient
@@ -31,12 +21,58 @@ FileSystemSubclient:
     _get_subclient_properties_json()    --  gets all the subclient related properties of the
     File System subclient
 
-    _common_backup_options()            --  Generates the advanced job options dict
-
     _advanced_backup_options()          --  sets the advanced backup options
 
+    content()                           --  update the content of the subclient
+
+    filter_content()                    --  update the filter of the subclient
+
+    exception_content()                 --  update the exception of the subclient
+
+    scan_type()                         --  update the scan type of the subclient
+
+    trueup_option()                     --  enable/disable trueup option of the subclient
+
+    backup_retention()                  -- 	enable/disable backup retention for the subclient
+
+    backup_retention_days()             -- 	set number of days for backup retention
+
+    archiver_retention()                --  enable/disable archiver_retention of the subclient.
+
+    archiver_retention_days()           --  set number of days for archiver retention
+
+    file_version()                      --  set version mode and no of version or days
+
+    disk_cleanup()                      --  enable/disable disk cleanup tab
+
+    disk_cleanup_rules()                --  update rules for disk_cleanup
+
+    backup_only_archiving_candidate     --  enable or disable backup only candidate on the subclient
+
+    trueup_days()                       --  update trueup after **n** days value of the subclient
+
+    generate_signature_on_ibmi()        --  enable or disable signature generation on ibmi
+
+    object_level_backup()               --  enable or disable object level backup for ibmi subclient
+
+    global_filter_status()              --  returns the status whther to include global filters
+
+    save_while_active_option()          --  enable or disable SAVACT option for ibmi subclients.
+
     find_all_versions()                 --  returns the dict containing list of all the backed up
-                                            versions of specified file
+    versions of specified file
+
+    block_level_backup_option()         -- 	Enable/Disable Blocklevel Option on subclient
+
+    create_file_level_index_option()    -- 	Enable/Disable Metadata collection Option on subclient
+
+    system_state_option()				--	Enable/Disable System state option for the subclient
+
+    onetouch_option()                   --  Enable/Disable One-Touch option for the subclient
+
+    onetouch_server()                   --  Provides the 1-touch server name
+
+    onetouch_server_directory()         --  Provides the 1-touch server directory
 
     backup()                            --  run a backup job for the subclient
 
@@ -45,80 +81,24 @@ FileSystemSubclient:
     restore_out_of_place()              --  Restores the files/folders specified in the input paths list
                                             to the input client, at the specified destionation location
 
+    catalog_acl()                       --  To enable/disable ACL on the subclient
+
+    index_server()                      --  Sets/gets the index server client for the subclient
+
+    index_pruning_type()                --  Sets the index pruning type
+
+    index_pruning_days_retention()      --  Sets the number of days to be maintained in
+                                            subclient index
+
+    index_pruning_cycles_retention()    --  Sets the number of cycles to be maintained in
+                                            subclient index
 
 FileSystemSubclient Instance Attributes:
 =======================================
 
-    **_fs_subclient_prop**                --  Returns the JSON for the fsSubclientProp tag in the Subclient 
-                                              Properties JSON
-                                             
-    **content**                           --  update the content of the subclient
+    **software_compression**            --  The software compression setting's value for the subclient.
 
-    **filter_content**                    --  update the filter of the subclient
-
-    **exception_content**                 --  update the exception of the subclient
-
-    **scan_type**                         --  update the scan type of the subclient
-
-    **trueup_option**                     --  enable/disable trueup option of the subclient
-
-    **backup_retention**                  --  enable/disable backup retention for the subclient
-
-    **backup_retention_days**             --  set number of days for backup retention
-
-    **archiver_retention**                --  enable/disable archiver_retention of the subclient.
-
-    **archiver_retention_days**           --  set number of days for archiver retention
-
-    **file_version**                      --  set version mode and no of version or days
-
-    **disk_cleanup**                      --  enable/disable disk cleanup tab
-
-    **disk_cleanup_rules**                --  update rules for disk_cleanup
-
-    **backup_only_archiving_candidate**   --  enable or disable backup only candidate on the subclient
-
-    **trueup_days**                       --  update trueup after **n** days value of the subclient
-
-    **generate_signature_on_ibmi**        --  enable or disable signature generation on ibmi
-
-    **object_level_backup**               --  enable or disable object level backup for ibmi subclient
-
-    **global_filter_status**              --  returns the status whther to include global filters
-
-    **save_while_active_option**          --  enable or disable SAVACT option for ibmi subclients.
-    
-    **software_compression**              --  The software compression setting's value for the subclient.
-
-    **use_vss**                           --  The Use VSS setting's value for the subclient.
-  
-    **block_level_backup_option**         --  Enable/Disable Blocklevel Option on subclient
-
-    **create_file_level_index_option**    --  Enable/Disable Metadata collection Option on subclient
-
-    **system_state_option**               --  Enable/Disable System state option for the subclient
-
-    **onetouch_option**                   --  Enable/Disable One-Touch option for the subclient
-
-    **onetouch_server**                   --  Provides the 1-touch server name
-
-    **onetouch_server_directory**         --  Provides the 1-touch server directory
-    
-    **catalog_acl**                       --  To enable/disable ACL on the subclient
-
-    **index_server**                      --  Sets/gets the index server client for the subclient
-
-    **index_pruning_type**                --  Sets the index pruning type
-
-    **index_pruning_days_retention**      --  Sets the number of days to be maintained in
-                                              subclient index
-
-    **index_pruning_cycles_retention**    --  Sets the number of cycles to be maintained in
-                                              subclient index
-	
-    **ibmi_dr_config**                    --  Sets the subclient into one touch mode and adds ibmi DR parameters
-
-    **backup_savf_file_data**             --  Sets the savf file data property for ibmi backup.
+    **use_vss**                         --  The Use VSS setting's value for the subclient.
 
 """
 
@@ -277,40 +257,6 @@ class FileSystemSubclient(Subclient):
 
         self._set_subclient_properties("_content", update_content)
 
-    def _common_backup_options(self, options):
-        """
-         Generates the advanced job options dict
-
-            Args:
-                options     (dict)  --  advanced job options that are to be included
-                                            in the request
-
-            Returns:
-                (dict)  -   generated advanced options dict
-        """
-        final_dict = super(FileSystemSubclient, self)._common_backup_options(options)
-
-        common_options = {
-                "jobDescription": options.get('job_description', ""),
-                "jobRetryOpts": {
-                    "killRunningJobWhenTotalRunningTimeExpires": options.get(
-                        'kill_running_job_when_total_running_time_expires', False),
-                    "numberOfRetries": options.get('number_of_retries', 0),
-                    "enableNumberOfRetries": options.get('enable_number_of_retries', False),
-                    "runningTime": {
-                        "enableTotalRunningTime": options.get('enable_total_running_time', False),
-                        "totalRunningTime": options.get('total_running_time', 3600)
-                    }
-                },
-                "startUpOpts": {
-                    "startInSuspendedState": options.get('start_in_suspended_state', False),
-                    "useDefaultPriority": options.get('use_default_priority', True),
-                    "priority": options.get('priority', 166)
-                }
-            }
-
-        return common_options
-
     def _advanced_backup_options(self, options):
         """Generates the advanced backup options dict
 
@@ -385,14 +331,10 @@ class FileSystemSubclient(Subclient):
             Returns:
                 list - list of content associated with the subclient
         """
-        content = []
-
-        for path in self._content:
-            if 'path' in path:
-                content.append(path["path"])
-
-        return content
-
+        include = [item['path'] for item in self._content if item.get('path')]
+        exclude = [item['excludePath'] for item in self._content if item.get('excludePath')]
+        return ['include:'] + include + [''] + ['exclude:'] + exclude
+        
     @content.setter
     def content(self, subclient_content):
         """Creates the list of content JSON to pass to the API to add/update content of a
@@ -1424,8 +1366,7 @@ class FileSystemSubclient(Subclient):
                collect_metadata=False,
                on_demand_input=None,
                advanced_options=None,
-               schedule_pattern=None,
-               common_backup_options=None):
+               schedule_pattern=None):
         """Runs a backup job for the subclient of the level specified.
 
             Args:
@@ -1460,41 +1401,6 @@ class FileSystemSubclient(Subclient):
                             inline_backup_copy      :   to run backup copy immediately(inline)
                             skip_catalog            :   skip catalog for intellisnap operation
 
-                common_backup_options      (dict)  --  advanced job options to be included while
-                                                        making request
-
-                        default: None
-
-                        options:
-                            job_description              :  job description to be set.
-
-                            enable_number_of_retries     :  enables/disables the property, number of retrys.
-                                values:
-                                    True/False
-
-                            number_of_retries            : total number of retries to be set.
-
-                            enable_total_running_time    :  enables/disables the property, toal running time.
-                                values:
-                                    True/False
-
-                            total_running_time           :  total run time to be set in (secs)
-
-                            kill_running_job_when_total_running_time_expires    :   enables/disables the property.
-                                values:
-                                    True/False
-
-                            start_in_suspended_state     :  enables/disables the property.
-                                values:
-                                    True/False
-
-                            use_default_priority         :  enables/disables the property.
-                                values:
-                                    True/False
-
-                            priority                     :  three digit number to be set.
-                                default: 166
-
                 schedule_pattern (dict) -- scheduling options to be included for the task
 
                         Please refer schedules.schedulePattern.createSchedule()
@@ -1528,14 +1434,13 @@ class FileSystemSubclient(Subclient):
 
             advanced_options['on_demand_input'] = on_demand_input
 
-        if advanced_options or schedule_pattern or common_backup_options:
+        if advanced_options or schedule_pattern:
             request_json = self._backup_json(
                 backup_level,
                 incremental_backup,
                 incremental_level,
                 advanced_options,
-                schedule_pattern,
-                common_backup_options
+                schedule_pattern
             )
 
             backup_service = self._services['CREATE_TASK']
@@ -1564,8 +1469,7 @@ class FileSystemSubclient(Subclient):
             copy_precedence=None,
             from_time=None,
             to_time=None,
-            fs_options=None,
-            schedule_pattern=None):
+            fs_options=None):
         """Restores the files/folders specified in the input paths list to the input client,
             at the specified destionation location.
 
@@ -1610,11 +1514,6 @@ class FileSystemSubclient(Subclient):
                         media_agent         : Media Agent need to be used for Browse and restore
                         is_vlr_restore      : sets if the restore job is to be triggered as vlr
                         validate_only       : To validate data backed up for restore
-
-                schedule_pattern (dict) -- scheduling options to be included for the task
-
-                        Please refer schedules.schedulePattern.createSchedule()
-                                                                    doc for the types of Jsons
 
 
             Returns:
@@ -1678,8 +1577,7 @@ class FileSystemSubclient(Subclient):
                 copy_precedence=copy_precedence,
                 from_time=from_time,
                 to_time=to_time,
-                fs_options=fs_options,
-                schedule_pattern=schedule_pattern)
+                fs_options=fs_options)
 
     @property
     def catalog_acl(self):
@@ -1817,75 +1715,3 @@ class FileSystemSubclient(Subclient):
                 "_commonProperties['indexSettings']['indexRetCycle']", value)
         else:
             raise SDKException('Subclient', '120')
-
-    @property
-    def ibmi_dr_config(self):
-        """
-        Return the ibmi dr configuration
-
-        Returns:
-            (dict)  --  Dictionary of DR parameters
-        """
-        return {
-            'backupMaxTime': self._fsSubClientProp.get('ibmiSubclientprop', {}).get('backupMaxTime', 0),
-            'printSysInfo': self._fsSubClientProp.get('ibmiSubclientprop', {}).get('printSysInfo', False),
-            'userProgram': self._fsSubClientProp.get('ibmiSubclientprop', {}).get('userProgram', ''),
-            'saveSecData': self._fsSubClientProp.get('ibmiSubclientprop', {}).get('saveSecData', False),
-            'saveConfObject': self._fsSubClientProp.get('ibmiSubclientprop', {}).get('saveConfObject', False)
-        }
-
-    @ibmi_dr_config.setter
-    def ibmi_dr_config(self, dr_config):
-        """
-            Sets the subclient into one touch mode and adds ibmi DR parameters
-
-            Args:
-                dr_config   (dict)  --  Dictionary of IBMi DR parameters
-                
-                Example:
-                    ibmi_dr_config = {
-                        'backupMaxTime' : 120,
-                        'printSysInfo' : True,
-                        'userProgram' : 'QSYS/CVPGM',
-                        'saveSecData' : True,
-                        'saveConfObject' : False,
-                        'library' : [{path:'/QSYS.LIB/TEST1.LIB'}]
-                    }
-            Returns:
-                None
-
-            Raises:
-                SDKException:
-                    if parameters are not valid
-        """
-        self.onetouch_option = True
-        if isinstance(dr_config, dict):
-            dr_config = {'ibmiSubclientprop':dr_config}
-            self._set_subclient_properties("_fs_subclient_prop", dr_config)
-        else:
-            raise SDKException('Subclient', '101', "The parameter should be dictionary")
-
-    @property
-    def backup_savf_file_data(self):
-        """
-         Return the ibmi savf file data configuration
-
-        Returns:
-            (bool)  --  Is savf file data going to be backed up
-        """
-        return self._fsSubClientProp.get('backupSaveFileData', False)
-
-    @backup_savf_file_data.setter
-    def backup_savf_file_data(self, value):
-        """
-        Sets the backup save file data property on an ibmi subclient
-        Args:
-                value   (boolean)  --  Toggle the backup property
-
-            Returns:
-                None
-
-            Raises:
-                None
-        """
-        self._set_subclient_properties("_fsSubClientProp['backupSaveFileData']", value)

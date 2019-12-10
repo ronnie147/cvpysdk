@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """Module for performing operations on a Backupset for the **File System** Agent.
@@ -52,15 +42,6 @@ FSBackupset:
     index_pruning_cycles_retention()    --  Sets the number of cycles to be maintained in
                                             the index database
 
-
-    create_fsblr_replication_pair()     --  Create Live/Granular Replication Pair
-
-    create_replica_copy()               --  Triggers Replica Copy for live Replication.
-
-    delete_replication_pair()           --   Delete Replication Pair
-
-    create_granular_replica_copy()      --   Triggers  Granular replication permanent mount
-
 """
 
 from __future__ import unicode_literals
@@ -68,8 +49,7 @@ from __future__ import unicode_literals
 from ..backupset import Backupset
 from ..client import Client
 from ..exception import SDKException
-from ..job import Job
-from ..schedules import Schedules
+
 
 class FSBackupset(Backupset):
     """Derived class from Backupset Base class, representing a fs backupset,
@@ -83,8 +63,7 @@ class FSBackupset(Backupset):
             copy_precedence=None,
             from_time=None,
             to_time=None,
-            fs_options=None,
-            restore_jobs=None):
+            fs_options=None):
         """Restores the files/folders specified in the input paths list to the same location.
 
             Args:
@@ -116,7 +95,6 @@ class FSBackupset(Backupset):
                         versions            : list of version numbers to be backed up
                         validate_only       : To validate data backed up for restore
 
-                restore_jobs    (list)          --  list of jobs to be restored if the job is index free restore
 
             Returns:
                 object - instance of the Job class for this restore job
@@ -140,8 +118,7 @@ class FSBackupset(Backupset):
             copy_precedence=copy_precedence,
             from_time=from_time,
             to_time=to_time,
-            fs_options=fs_options,
-            restore_jobs=restore_jobs
+            fs_options=fs_options
         )
 
     def restore_out_of_place(
@@ -154,8 +131,7 @@ class FSBackupset(Backupset):
             copy_precedence=None,
             from_time=None,
             to_time=None,
-            fs_options=None,
-            restore_jobs=None):
+            fs_options=None):
         """Restores the files/folders specified in the input paths list to the input client,
             at the specified destionation location.
 
@@ -199,7 +175,6 @@ class FSBackupset(Backupset):
                         versions            : list of version numbers to be backed up
                         validate_only       : To validate data backed up for restore
 
-                restore_jobs    (list)          --  list of jobs to be restored if the job is index free restore
 
             Returns:
                 object - instance of the Job class for this restore job
@@ -229,8 +204,7 @@ class FSBackupset(Backupset):
             copy_precedence=copy_precedence,
             from_time=from_time,
             to_time=to_time,
-            fs_options=fs_options,
-            restore_jobs=restore_jobs
+            fs_options=fs_options
         )
 
     def find_all_versions(self, *args, **kwargs):
@@ -424,7 +398,7 @@ class FSBackupset(Backupset):
                 "entity": {
                     "_type_": "6",
                     "appName": "File System",
-                    "applicationId": self._agent_object.agent_id,
+                    "applicationId": "33",
                     "backupsetId": self.backupset_id,
                     "backupsetName": self.backupset_name,
                     "clientId": self._agent_object._client_object.client_id,
@@ -445,6 +419,7 @@ class FSBackupset(Backupset):
         hwconfig = response['responseFile']['hwconfig']
         ipconfig = response['responseFile']['clients'][0]['netconfig']['ipinfo']
         return hwconfig, ipconfig
+
     def run_bmr_restore(self, **restore_options):
         """
         Calling the create task API with the final restore JSON
@@ -482,14 +457,11 @@ class FSBackupset(Backupset):
 
                GuestPassword            (String)    : The Password of the guest OS
 
-               CloneClientName          (String)    : The clone client name
-
         Returns :
                     returns the task object
 
         """
         client_name = self._agent_object._client_object.client_name
-
 
         self._instance_object._restore_association = self._backupset_association
 
@@ -498,7 +470,6 @@ class FSBackupset(Backupset):
 
         restore_json_system_state = self._restore_bmr_admin_json(ipconfig, hwconfig)
         restore_json_virtualserver = self._restore_bmr_virtualserveropts_json()
-
 
         response_json['taskInfo']['subTasks'][0]['options'][
             'adminOpts'] = restore_json_system_state
@@ -513,10 +484,10 @@ class FSBackupset(Backupset):
 
         vm_option['oneTouchResponse']['clients'][0]['backupSet'][
             'backupsetName'] = self.backupset_name
+
         vm_option['oneTouchResponse']['csinfo']['ip'][
             'address'] = restore_options.get('CommServIP')
-        vm_option['oneTouchResponse']['csinfo']['commservInfo'][
-            'clientName'] = restore_options.get('CommServName', None)
+
         vm_option['oneTouchResponse']['csinfo']['commservInfo'][
             'hostName'] = restore_options.get('CommServHostname', None)
 
@@ -557,8 +528,7 @@ class FSBackupset(Backupset):
             vm_option['vmInfo']['vmLocation']['vCenter'] = restore_options.get('VcenterServerName')
 
         if restore_options.get('HyperVInstance'):
-            if restore_options.get('OsType')=='UNIX':
-                vm_option['vendor'] = 'MICROSOFT'
+
             response_json['taskInfo']['subTasks'][0]['options'][
             'restoreOptions']['virtualServerRstOption']['diskLevelVMRestoreOption'][
                 'esxServerName'] = restore_options.get('HyperVInstance', None)
@@ -583,25 +553,6 @@ class FSBackupset(Backupset):
         vm_option['oneTouchResponse']['hwconfig']['vmName'] = restore_options.get('VmName', None)
 
         vm_option['oneTouchResponse']['hwconfig']['overwriteVm'] = True
-
-        if restore_options.get('CloneClientName'):
-            vm_option['oneTouchResponse']['clients'][0]['clone'] = True
-            vm_option['oneTouchResponse']['clients'][0]['newclient'][
-                'clientName'] = restore_options.get('CloneClientName', None)
-            vm_option['oneTouchResponse']['clients'][0]['newclient'][
-                'hostName'] = restore_options.get('CloneClientName', None)
-        if restore_options.get('OsType')=='UNIX':
-            vm_option['oneTouchResponse']['clients'][0]['newclient'][
-            'hostName'] = ''
-            vm_option['oneTouchResponse']['clients'][0]['backupSet'][
-            'backupsetName'] = self._properties['backupSetEntity']['backupsetName']
-            if (response_json['taskInfo']['subTasks'][0]['options']['adminOpts'][
-                'vmProvisioningOption']['virtualMachineOption'][0]['oneTouchResponse']
-                ['hwconfig']['mem_size']) < 4096:
-                vm_option['oneTouchResponse']['hwconfig']['mem_size'] = 4096
-        if restore_options.get('UseDhcp'):
-            vm_option['oneTouchResponse']['clients'][0]['netconfig']['ipinfo']['interfaces'][0][
-            'protocols'][0]['useDhcp'] = True
 
         response_json['taskInfo']['subTasks'][0]['options']['restoreOptions']['destination'][
             'inPlace'] = False
@@ -1013,318 +964,3 @@ class FSBackupset(Backupset):
             self._process_update_reponse(request_json)
         else:
             raise SDKException('Backupset', '105')
-
-
-
-    def create_replica_copy(self, srcclientid, destclientid, scid, blrid, srcguid, dstguid, **replication_options):
-
-        """"setter for live  blklvl Replication replica copy...
-
-        Args:
-            srcclientid   (int)  --  Source client id.
-
-            destclientid    (dict)  -- Destintion client id .
-
-            scid           (int) --  Replication Subclient id
-
-            blrid           (int) -- Blr pair id
-
-            **replication_options (dict) -- object instance
-
-
-        """
-
-
-
-        srcvol = replication_options.get('srcvol')
-        restorepath = replication_options.get('RestorePath')
-        replicacopyjson = {
-            "taskInfo": {
-                "task": {
-                    "ownerId": 1,
-                    "taskType": 1,
-                    "ownerName": "",
-                    "initiatedFrom": 1,
-                    "taskFlags": {
-                        "disabled": False
-                    }
-                },
-                "subTasks": [
-                    {
-                        "subTaskOperation": 1,
-                        "subTask": {
-                            "subTaskType": 1,
-                            "operationType": 4047
-                        },
-                        "options": {
-                            "backupOpts": {
-                                "mediaOpt": {
-                                    "auxcopyJobOption": {
-                                        "maxNumberOfStreams": 0,
-                                        "allCopies": True,
-                                        "useMaximumStreams": True,
-                                        "useScallableResourceManagement": False
-                                    }
-                                }
-                            },
-                            "adminOpts": {
-                                "blockOperation": {
-                                    "operations": [
-                                        {
-                                            "appId": scid,
-                                            "opType": 8,
-                                            "dstProxyClientId": destclientid,
-                                            "fsMountInfo": {
-                                                "doLiveMount": True,
-                                                "lifeTimeInSec": 7200,
-                                                "blrPairId": blrid,
-                                                "mountPathPairs": [
-                                                    {
-                                                        "mountPath": restorepath,
-                                                        "srcPath": srcvol,
-                                                        "srcGuid": dstguid,
-                                                        "dstGuid": srcguid
-                                                    }
-                                                ]
-                                            }
-                                        }
-                                    ]
-                                }
-                            },
-                            "commonOpts": {
-                                "subscriptionInfo": "<Api_Subscription subscriptionId =\"116\"/>"
-                            }
-                        }
-                    }
-                ]
-            }
-        }
-
-        flag, response = self._cvpysdk_object.make_request('POST', self._services['RESTORE'], replicacopyjson)
-        if flag:
-            if response.json():
-                if "jobIds" in response.json():
-                    return Job(self._commcell_object, response.json()['jobIds'][0])
-
-                elif "taskId" in response.json():
-                    return Schedules(self._commcell_object).get(task_id=response.json()['taskId'])
-
-                elif "errorCode" in response.json():
-                    error_message = response.json()['errorMessage']
-
-                    o_str = 'Restore job failed\nError: "{0}"'.format(error_message)
-                    raise SDKException('Subclient', '102', o_str)
-                else:
-                    raise SDKException('Subclient', '102', 'Failed to run the restore job')
-            else:
-                raise SDKException('Response', '102')
-        else:
-            raise SDKException('Response', '101', self._update_response_(response.text))
-
-
-    def delete_replication_pair(self, blrid):
-
-        """"Delete replication pair
-
-        Args:
-            blrid   (int)  --  blocklevel replication id.
-
-
-        """
-
-        flag, response = self._cvpysdk_object.make_request('DELETE', self._services['DELETE_BLR_PAIR']%blrid)
-
-        if response.status_code != 200 and flag ==  False:
-            raise SDKException('Response', '101', self._update_response_(response.text))
-
-
-
-    def create_fsblr_replication_pair(self, srcclientid, destclientid, rpstoreid=None, replicationtype=None,
-                                      **replication_options):
-        """"Create granular replication pair  json
-
-        Args:
-            srcclientid   (int)  --  Source client id.
-
-            destclientid    (dict)  -- Destintion client id .
-
-            **replication_options (dict) -- object instance
-
-
-        """
-        srcvol = replication_options.get('srcvol')
-        destvol = replication_options.get('destvol')
-        destclient = replication_options.get('destclient')
-        srcclient = replication_options.get('srcclient')
-        rpstore = replication_options.get('RPStore')
-
-        if replicationtype == 4:
-            blr_options = "<?xml version='1.0' encoding='UTF-8'?><BlockReplication_BLRRecoveryOptions recoveryType=\"4\"><granularV2 ccrpInterval=\"120\" acrpInterval=\"300\" maxRpInterval=\"21600\" rpMergeDelay=\"172800\" rpRetention=\"604800\" maxRpStoreOfflineTime=\"0\" useOffPeakSchedule=\"0\" rpStoreId=\"{0}\" rpStoreName=\"{1}\"/></BlockReplication_BLRRecoveryOptions>".format(
-                rpstoreid, rpstore)
-
-        else:
-            blr_options = "<?xml version='1.0' encoding='UTF-8'?><BlockReplication_BLRRecoveryOptions recoveryType=\"1\"><granularV2 ccrpInterval=\"300\" acrpInterval=\"0\" maxRpInterval=\"21600\" rpMergeDelay=\"172800\" rpRetention=\"604800\" maxRpStoreOfflineTime=\"0\" useOffPeakSchedule=\"0\"/></BlockReplication_BLRRecoveryOptions>"
-
-        granularjson = {
-            "destEndPointType": 2,
-            "blrRecoveryOpts": blr_options,
-            "srcEndPointType": 2,
-            "srcDestVolumeMap": [
-                {
-                    "sourceVolumeGUID": "55053f38-2de9-429c-945a-bb8827911c11",
-                    "destVolume": destvol,
-                    "destVolumeGUID": "3758a646-7b30-411b-88ea-12f6b957dfd1",
-                    "sourceVolume": srcvol
-                }
-            ],
-            "destEntity": {
-                "client": {
-                    "clientId": destclientid,
-                    "clientName": destclient
-                }
-            },
-            "sourceEntity": {
-                "client": {
-                    "clientId": srcclientid,
-                    "clientName": srcclient
-                }
-            }
-        }
-        flag, response = self._cvpysdk_object.make_request('POST', self._services['CREATE_BLR_PAIR'], granularjson)
-        if response.status_code != 200 and flag == False:
-            raise SDKException('Response', '101', self._update_response_(response.text))
-
-
-
-    def create_granular_replica_copy(self, srcclientid, destclientid, scid, blrid, srcguid, dstguid, restoreguid,
-                                     **replication_options):
-        """"setter for granular blklvl Replication replica copy...
-
-        Args:
-            srcclientid   (int)  --  Source client id.
-
-            destclientid    (dict)  -- Destintion client id .
-
-            scid           (int) --  Replication Subclient id
-
-            blrid           (int) -- Blr pair id
-
-            dstguid         (str) -- Destination relication guid
-
-            timestamp        (int) -- Replication point timestamp
-
-            **replication_options (dict) -- object instance
-
-
-        """
-
-        import re
-
-        flag, response = self._cvpysdk_object.make_request('GET', self._services['GRANULAR_BLR_POINTS']
-                                                           %(destclientid, scid, dstguid))
-        replicapoints = response.content
-        temp = replicapoints.split(b"},")
-        list_rp = temp[len(temp) - 1]
-        list_rp = str(list_rp, 'utf-8')
-        result = re.sub(r'[\W_]+', '', list_rp)
-        numbers = re.findall(r'\d+', result)
-        timestamp = int(numbers[0])
-        sequence_number = int(numbers[1])
-        data_changed_size = int(numbers[3])
-
-        srcvol = replication_options.get('srcvol')
-        restorepath = replication_options.get('RestorePath')
-        replicacopyjson = {
-            "taskInfo": {
-                "task": {
-                    "ownerId": 1,
-                    "taskType": 1,
-                    "ownerName": "",
-                    "initiatedFrom": 1,
-                    "taskFlags": {
-                        "disabled": False
-                    }
-                },
-                "subTasks": [
-                    {
-                        "subTaskOperation": 1,
-                        "subTask": {
-                            "subTaskType": 1,
-                            "operationType": 4047
-                        },
-                        "options": {
-                            "backupOpts": {
-                                "mediaOpt": {
-                                    "auxcopyJobOption": {
-                                        "maxNumberOfStreams": 0,
-                                        "allCopies": True,
-                                        "useMaximumStreams": True,
-                                        "useScallableResourceManagement": False
-                                    }
-                                }
-                            },
-                            "adminOpts": {
-                                "blockOperation": {
-                                    "operations": [
-                                        {
-                                            "appId": scid,
-                                            "opType": 8,
-                                            "dstProxyClientId": destclientid,
-                                            "fsMountInfo": {
-                                                "doLiveMount": False,
-                                                "lifeTimeInSec": 7200,
-                                                "blrPairId": blrid,
-                                                "mountPathPairs": [
-                                                    {
-                                                        "mountPath": restorepath,
-                                                        "srcPath": srcvol,
-                                                        "srcGuid": restoreguid,
-                                                        "dstGuid": srcguid
-                                                    }
-                                                ],
-                                                "rp": {
-                                                    "timeStamp": timestamp,
-                                                    "sequenceNumber": sequence_number,
-                                                    "rpType": 1,
-                                                    "appConsistent": False,
-                                                    "dataChangedSize": data_changed_size
-                                                }
-                                            }
-                                        }
-                                    ]
-                                }
-                            },
-                            "commonOpts": {
-                                "subscriptionInfo": "<Api_Subscription subscriptionId =\"1451\"/>"
-                            }
-                        }
-                    }
-                ]
-            }
-        }
-
-
-
-        flag, response = self._cvpysdk_object.make_request('POST', self._services['RESTORE'], replicacopyjson)
-
-
-        if flag:
-            if response.json():
-                if "jobIds" in response.json():
-                    return Job(self._commcell_object, response.json()['jobIds'][0])
-
-                elif "taskId" in response.json():
-                    return Schedules(self._commcell_object).get(task_id=response.json()['taskId'])
-
-                elif "errorCode" in response.json():
-                    error_message = response.json()['errorMessage']
-
-                    o_str = 'Restore job failed\nError: "{0}"'.format(error_message)
-                    raise SDKException('Subclient', '102', o_str)
-                else:
-                    raise SDKException('Subclient', '102', 'Failed to run the restore job')
-            else:
-                raise SDKException('Response', '102')
-        else:
-            raise SDKException('Response', '101', self._update_response_(response.text))
-

@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """
@@ -43,8 +33,7 @@ ArrayManagement:
 
     delete_array()              --  Method to delete array
 
-    edit_array()                --  Method to Update Snap Configuration and Array Access Node MA
-                                    for the given Array
+    update_snap_config()        --  Method to Update Snap Configuration for the Array
 """
 
 from __future__ import unicode_literals
@@ -77,7 +66,7 @@ class ArrayManagement(object):
                         mountpath=None,
                         do_vssprotection=True,
                         control_host=None,
-                        flags=None,
+                        flags=False,
                         reconcile=False):
         """ Common Method for Snap Operations
 
@@ -96,9 +85,7 @@ class ArrayManagement(object):
                 control_host (int)        -- Control host for the Snap recon operation,
                 defaullt: None
 
-                flags        (int)       -- value to define when snap operation to be forced
-                1 - to force unmount
-                2 - to force delete
+                flags        (bool)       -- True when snap needs to be force deleted
 
                 reconcile    (bool)       -- Uses Reconcile json if true
 
@@ -112,7 +99,9 @@ class ArrayManagement(object):
         else:
             client_id = int(self._commcell_object.clients.get(client_name).client_id)
 
-        if flags is None:
+        if flags:
+            flags = 2
+        else:
             flags = 0
 
         if reconcile:
@@ -195,15 +184,6 @@ class ArrayManagement(object):
         """
         return self._snap_operation(1, volume_id)
 
-    def force_unmount(self, volume_id):
-        """ Force UnMounts Snap of the given volume id
-
-            Args:
-
-                volume_id    (int)        -- volume id of the snap backup job
-        """
-        return self._snap_operation(1, volume_id, flags=1)
-
     def delete(self, volume_id):
         """ Deletes Snap of the given volume id
 
@@ -220,7 +200,7 @@ class ArrayManagement(object):
 
                 volume_id    (int)        -- volume id of the snap backup job
         """
-        return self._snap_operation(2, volume_id, flags=2)
+        return self._snap_operation(2, volume_id, flags=True)
 
     def revert(self, volume_id):
         """ Reverts Snap of the given volume id
@@ -246,7 +226,7 @@ class ArrayManagement(object):
                   username,
                   password,
                   control_host=None,
-                  array_access_node=None,
+                  array_controller=None,
                   is_ocum=False):
         """This method will help in adding array entry in the array management
             Args :
@@ -260,7 +240,7 @@ class ArrayManagement(object):
 
                     control_host        (str)               -- control host of the array
 
-                    array_access_node    (str)              -- Array Access Node MediaAgent Name
+                    array_controller    (str)               -- Array Controller MediaAgent Name
 
                     is_ocum             (bool)              -- used for netapp to specify whether
                                                                to use Primary file server or OCUM
@@ -270,7 +250,7 @@ class ArrayManagement(object):
                 errorMessage   (string) :  Error message
         """
 
-        client_id = int(self._commcell_object.clients.get(array_access_node).client_id)
+        client_id = int(self._commcell_object.clients.get(array_controller).client_id)
         request_json = {
             "clientId": 0,
             "flags": 0,
@@ -281,7 +261,7 @@ class ArrayManagement(object):
                 {
                     "arrayControllerId":0,
                     "mediaAgent":{
-                        "name": array_access_node,
+                        "name": array_controller,
                         "id": client_id
                     },
                     "arrCtrlOptions":[
@@ -416,15 +396,8 @@ class ArrayManagement(object):
                 raise SDKException('StorageArray', '103', error_message)
             return error_message
 
-    def edit_array(self,
-                   control_host_id,
-                   master_config_id,
-                   value,
-                   config_update_level,
-                   level_id,
-                   array_access_node,
-                   mode):
-        """Method to Update Snap Configuration and Array controllers for the Array
+    def update_snap_config(self, control_host_id, master_config_id, value, config_update_level):
+        """Method to Update Snap Configuration for the Array
         Args:
             control_host_id        (int)        -- Control Host Id of the Array
 
@@ -434,20 +407,8 @@ class ArrayManagement(object):
 
             config_update_level    (str)        -- update level for the Snap config
             ex: "array", "subclient", "copy", "client"
-
-            level_id               (int)        -- level Id where the config needs to be
-                                                   added/updated
-
-            array_access_node       (str)        -- Array Access Node MA
-            default: None
-
-            mode                    (str)       -- Operation type for the Array Access Node whether
-                                                   to add or remove
-            default: add
-            values: add, remove
         """
 
-        copy_level_id = app_level_id = client_level_id = 0
         request_json_service = self.storage_arrays + '/{0}'.format(control_host_id)
         flag, request_json = self._commcell_object._cvpysdk_object.make_request(
             'GET', request_json_service
@@ -457,84 +418,23 @@ class ArrayManagement(object):
             config_update_level = 3
         elif config_update_level == "copy":
             config_update_level = 6
-            copy_level_id = level_id
         elif config_update_level == "subclient":
             config_update_level = 9
-            app_level_id = level_id
         elif config_update_level == "client":
             config_update_level = 8
-            client_level_id = level_id
-        else:
-            config_update_level = 3
 
         request_json = request_json.json()
 
         update_dict = {
             "add": False,
             "forceAdd": False,
-            "assocType": config_update_level,
-            "copyId": copy_level_id,
-            "appId": app_level_id,
-            "clientId": client_level_id
+            "assocType": config_update_level
             }
         request_json.update(update_dict)
 
-        if master_config_id is not None:
-            for config in request_json['configList']['configList']:
-                if config['masterConfigId'] == int(master_config_id):
-                    config['value'] = str(value)
-                    if config_update_level != "array":
-                        config['isOverridden'] = True
-
-        if array_access_node is not None and mode == "add":
-            client_id = int(self._commcell_object.clients.get(array_access_node).client_id)
-            if "selectedMAs" in request_json:
-                update_dict = {
-                    "arrayControllerId": 0,
-                    "mediaAgent": {
-                        "name": array_access_node,
-                        "id": client_id
-                    },
-                    "arrCtrlOptions": [
-                        {
-                            "isEnabled": True,
-                            "arrCtrlOption": {
-                                "name": "Pruning",
-                                "id": 262144
-                            }
-                        }
-                    ]
-                }
-                request_json['selectedMAs'].append(update_dict)
-            else:
-                update_dict = {
-                    "selectedMAs": [
-                        {
-                            "arrayControllerId": 0,
-                            "mediaAgent": {
-                                "name": array_access_node,
-                                "id": client_id
-                            },
-                            "arrCtrlOptions": [
-                                {
-                                    "isEnabled": True,
-                                    "arrCtrlOption": {
-                                        "name": "Pruning",
-                                        "id": 262144
-                                    }
-                                }
-                            ]
-                        }
-                    ]}
-                request_json.update(update_dict)
-
-        elif array_access_node is not None and mode == "remove":
-            client_id = int(self._commcell_object.clients.get(array_access_node).client_id)
-            if "selectedMAs" in request_json:
-                for controller in range(len(request_json['selectedMAs'])):
-                    if request_json['selectedMAs'][controller]['mediaAgent']['id'] == int(client_id):
-                        del request_json['selectedMAs'][controller]
-                        break
+        for config in request_json['configList']['configList']:
+            if config['masterConfigId'] == int(master_config_id):
+                config['value'] = str(value)
 
         request_json['configs'] = request_json.pop('configList')
 

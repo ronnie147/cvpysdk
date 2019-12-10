@@ -1,18 +1,8 @@
 # -*- coding: utf-8 -*-
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """Class to perform all the CommCell Migration operations on commcell
@@ -28,8 +18,6 @@ CommCellMigration:
     commcell_export()               --  function to run CCM Export operation.
 
     commcell_import()               --  function to run CCM Import operation.
-
-    tape_import()                   --  function to run tape import operation.
 
 """
 from base64 import b64encode
@@ -352,88 +340,6 @@ class CommCellMigration(object):
                 return Job(self._commcell_object, response.json()['jobIds'][0])
             elif response.json() and 'errorCode' in response.json():
                 raise SDKException('CommCellMigration', '102', 'CCM Import job failed with error code : ' +
-                                   str(response.json()['errorCode']))
-        else:
-            response_string = self._update_response_(response.text)
-            raise SDKException('Response', '101', response_string)
-
-    def tape_import(self, library_id, medias_id, drive_pool_id):
-
-        """ performs the tape import import operation for the specified tape.
-
-            Args:
-                library_id      (int)       --      tape library id.
-
-                medias_id        (list)       --      tape id.
-
-                drive_pool_id   (int)       --      drive pool id
-
-            Returns:
-                Tape import job instance
-        """
-
-        tape_import_json = {
-            "taskInfo": {
-                "associations": [
-                ], "task": {
-                    "ownerId": 1, "taskType": 1, "ownerName": "admin", "sequenceNumber": 0, "initiatedFrom": 1,
-                    "policyType": 0, "taskId": 0, "taskFlags": {
-                        "disabled": False
-                    }
-                }, "subTasks": [
-                    {
-                        "subTask": {
-                            "subTaskType": 1, "operationType": 4017
-                        },
-                        "options": {
-                            "adminOpts": {
-                                "contentIndexingOption": {
-                                    "subClientBasedAnalytics": False
-                                }, "libraryOption": {
-                                    "operation": 15, "media": [
-                                    ], "library": {
-                                        "libraryName": "", "_type_": 9, "libraryId": library_id
-                                    }, "catalogMedia": {
-                                        "fileMarkerToStart": 0, "fileMarkerToEnd": 0, "reCatalog": True,
-                                        "maxNumOfDrives": 1,
-                                        "spareGroupId": 0,
-                                        "merge": True,
-                                        "subTaskType": 2,
-                                        "drivePoolEntity": {
-                                            "_type_": 47, "drivePoolId": drive_pool_id
-                                        }
-                                    }, "mediaAgent": {
-                                        "mediaAgentId": 2, "_type_": 11
-                                    }
-                                }
-                            }, "restoreOptions": {
-                                "virtualServerRstOption": {
-                                    "isBlockLevelReplication": False
-                                }, "commonOptions": {
-                                    "syncRestore": False
-                                }
-                            }
-                        }
-                    }
-                ]
-            }
-        }
-
-        sub_dict = tape_import_json["taskInfo"]["subTasks"][0]["options"]["adminOpts"]["libraryOption"]["media"]
-
-        for media in medias_id:
-            temp_dict = {"_type_": 46, "mediaId": int(media), "mediaName": ""}
-            sub_dict.append(temp_dict)
-
-        flag, response = self._cvpysdk_object.make_request('POST',
-                                                           self._services['RESTORE'],
-                                                           tape_import_json)
-
-        if flag:
-            if response.json() and 'jobIds' in response.json():
-                return Job(self._commcell_object, response.json()['jobIds'][0])
-            elif response.json() and 'errorCode' in response.json():
-                raise SDKException('CommCellMigration', '102', 'Tape Import job failed with error code : ' +
                                    str(response.json()['errorCode']))
         else:
             response_string = self._update_response_(response.text)

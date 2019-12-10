@@ -3,18 +3,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """File for performing client related operations on the Commcell.
@@ -117,10 +107,6 @@ Client
 
     _make_request()              --  makes the upload request to the server
 
-    _process_update_request()    --  to process the request using API call
-
-    update_properties()          --  to update the client properties
-
     enable_backup()              --  enables the backup for the client
 
     enable_backup_at_time()      --  enables the backup for the client at the input time specified
@@ -170,8 +156,6 @@ Client
     delete_additional_setting()  --  deletes registry key from the client property
 
     release_license()            --  releases a license from a client
-    
-    retire()                     --  perform retire operation on the client
 
     reconfigure_client()         --  reapplies license to the client
 
@@ -183,8 +167,6 @@ Client
 
     set_job_start_time()         -- sets the job start time at client level
 
-    uninstall_software()		 --	Uninstalls all the packages of the client
-
 
 Client Attributes
 -----------------
@@ -192,19 +174,11 @@ Client Attributes
     **available_security_roles**    --  returns the security roles available for the selected
     client
 
-    **properties**                  --  returns the properties of the client
-
-    **display_name**                --  returns the display name of the client
-
-    **description**                 --  returns the description of the client
-
     **client_id**                   --  returns the id of the client
 
     **client_name**                 --  returns the name of the client
 
     **client_hostname**             --  returns the host name of the client
-
-    **timezone**                    --  returns the timezone of the client
 
     **os_info**                     --  returns string consisting of OS information of the client
 
@@ -274,19 +248,16 @@ from __future__ import unicode_literals
 import os
 import re
 import time
-import copy
 
 from base64 import b64encode
 from past.builtins import basestring
 
 import requests
 
-from .job import Job
 from .agent import Agents
 from .schedules import Schedules
 from .exception import SDKException
 from .deployment.install import Install
-from .deployment.uninstall import Uninstall
 
 from .network import Network
 from .network_throttle import NetworkThrottle
@@ -369,7 +340,7 @@ class Clients(object):
                     no client exists with the given Name / Id
 
         """
-        value = str(value).lower()
+        value = str(value)
 
         if value in self.all_clients:
             return self.all_clients[value]
@@ -378,6 +349,16 @@ class Clients(object):
                 return list(filter(lambda x: x[1]['id'] == value, self.all_clients.items()))[0][0]
             except IndexError:
                 raise IndexError('No client exists with the given Name / Id')
+
+    def __iter__(self):
+        self.collections = list(self.all_clients)
+        return self
+    
+    def __next__(self):
+        if self.collections:
+            return self.get(self.collections.pop())
+        else:
+            raise StopIteration
 
     def _get_clients(self):
         """Gets all the clients associated with the commcell
@@ -523,7 +504,7 @@ class Clients(object):
                 virtualization_clients = {}
 
                 for pseudo_client in pseudo_clients:
-                    virtualization_clients[pseudo_client['client']['clientName'].lower()] = {
+                    virtualization_clients[pseudo_client['client']['clientName']] = {
                         'clientId': pseudo_client['client']['clientId'],
                         'hostName': pseudo_client['client']['hostName']
                     }
@@ -1164,23 +1145,25 @@ class Clients(object):
             raise SDKException('Response', '101', self._update_response_(response.text))
 
     def get(self, name):
-        """Returns a client object if client name or host name or ID matches the client attribute
+        """Returns a client object if client name or host name matches specified name
             We check if specified name matches any of the existing client names else
-            compare specified name with host names of existing clients else if name matches with the ID
+            compare specified name with host names of existing clients
 
             Args:
-                name (str/int)  --  name / hostname / ID of the client
+                name (str)  --  name / hostname of the client
 
             Returns:
                 object - instance of the Client class for the given client name
 
             Raises:
                 SDKException:
-                    if type of the client name argument is not string or Int
+                    if type of the client name argument is not string
 
                     if no client exists with the given name
         """
-        if isinstance(name, basestring):
+        if not isinstance(name, basestring):
+            raise SDKException('Client', '101')
+        else:
             name = name.lower()
             client_name = None
             client_id = None
@@ -1202,17 +1185,6 @@ class Clients(object):
                 client_id = self.hidden_clients[client_name]['id']
 
             return Client(self._commcell_object, client_name, client_id)
-
-        elif isinstance(name, int):
-            name = str(name)
-            client_name = [client_name for client_name in self.all_clients
-                           if name in self.all_clients[client_name].values()]
-
-            if client_name:
-                return self.get(client_name[0])
-            raise SDKException('Client', '102', 'No client exists with the given ID: {0}'.format(name))
-
-        raise SDKException('Client', '101')
 
     def delete(self, client_name):
         """Deletes the client from the commcell.
@@ -1363,9 +1335,6 @@ class Client(object):
         self._license_info = None
         self._cvd_port = None
         self._job_start_time = None
-        self._timezone = None
-
-        self._readiness = None
 
         self.refresh()
 
@@ -1395,10 +1364,22 @@ class Client(object):
                     if response is not success
         """
         flag, response = self._cvpysdk_object.make_request('GET', self._CLIENT)
-
+    
         if flag:
             if response.json() and 'clientProperties' in response.json():
                 self._properties = response.json()['clientProperties'][0]
+
+                self._vmstatus = self._properties.get('vmStatusInfo')
+                self.description = self._properties['client'].get('clientDescription')
+
+                self.vcenter = None if self._vmstatus is None \
+                                else self._vmstatus['pseudoClient']['clientName']
+                self.vm_subclient_name = None if not self._vmstatus or \
+                                not self._vmstatus.get('subclientName') \
+                                else self._vmstatus['subclientName']
+                self.vm_subclient_id = None if not self._vmstatus or \
+                                not self._vmstatus.get('subclientId') \
+                                else self._vmstatus['subclientId']
 
                 os_info = self._properties['client']['osInfo']
                 processor_type = os_info['OsDisplayInfo']['ProcessorType']
@@ -1433,8 +1414,6 @@ class Client(object):
 
                 self._client_hostname = self._properties['client']['clientEntity']['hostName']
 
-                self._timezone = self._properties['client']['TimeZone']['TimeZoneName']
-
                 self._is_intelli_snap_enabled = bool(client_props['EnableSnapBackups'])
 
                 if 'installDirectory' in self._properties['client']:
@@ -1468,18 +1447,12 @@ class Client(object):
         else:
             raise SDKException('Response', '101', self._update_response_(response.text))
 
-    def _request_json(self, option, enable=True, enable_time=None, job_start_time=None, **kwargs):
+    def _request_json(self, option, enable=True, enable_time=None, job_start_time=None):
         """Returns the JSON request to pass to the API as per the options selected by the user.
 
             Args:
                 option (str)  --  string option for which to run the API for
                     e.g.; Backup / Restore / Data Aging
-
-                **kwargs (dict)  -- dict of keyword arguments as follows
-
-                    timezone    (str)   -- timezone to be used of the operation
-
-                        **Note** make use of TIMEZONES dict in constants.py to pass timezone
 
             Returns:
                 dict - JSON request to pass to the API
@@ -1523,7 +1496,7 @@ class Client(object):
                             "enableAfterADelay": True,
                             "enableActivityType": False,
                             "dateTime": {
-                                "TimeZoneName": kwargs.get("timezone", "(UTC) Coordinated Universal Time"),
+                                "TimeZoneName": "(UTC) Coordinated Universal Time",
                                 "timeValue": enable_time
                             }
                         }]
@@ -1536,7 +1509,7 @@ class Client(object):
             return request_json2
 
         if job_start_time is not None:
-            request_json1['clientProperties']['clientProps']['jobStartTime'] = job_start_time
+            request_json1['clientProperties']['jobStartTime'] = job_start_time
 
         return request_json1
 
@@ -1842,76 +1815,6 @@ class Client(object):
         else:
             raise SDKException('Client', '109')
 
-    def _process_update_request(self, request_json):
-        """Runs the Client update API
-
-            Args:
-                request_json    (dict)  -- request json sent as payload
-
-            Raises:
-                SDKException:
-                    if response is empty
-
-                    if response is not success
-
-        """
-        flag, response = self._cvpysdk_object.make_request(
-            'POST', self._CLIENT, request_json
-        )
-        if flag:
-            if response.json():
-                if 'response' in response.json():
-                    if response.json()['response'][0].get('errorCode', 0):
-                        error_message = response.json()['response'][0]['errorMessage']
-                        o_str = 'Failed to set property\nError: "{0}"'.format(
-                            error_message)
-                        raise SDKException('Client', '102', o_str)
-                    self.refresh()
-            else:
-                raise SDKException('Response', '102')
-        else:
-            raise SDKException('Response', '101', self._update_response_(response.text))
-
-    def update_properties(self, properties_dict):
-        """Updates the client properties
-
-            Args:
-                properties_dict (dict)  --  client property dict which is to be updated
-
-            Returns:
-                None
-
-            Raises:
-                SDKException:
-                    if failed to add
-
-                    if response is empty
-
-                    if response code is not as expected
-
-        **Note** self.properties can be used to get a deep copy of all the properties, modify the properties which you
-        need to change and use the update_properties method to set the properties
-
-        """
-        request_json = {
-            "clientProperties": {},
-            "association": {
-                "entity": [
-                    {
-                        "clientName": self.client_name
-                    }
-                ]
-            }
-        }
-
-        request_json['clientProperties'].update(properties_dict)
-        self._process_update_request(request_json)
-
-    @property
-    def properties(self):
-        """Returns the client properties"""
-        return copy.deepcopy(self._properties)
-
     @property
     def name(self):
         """Returns the Client name"""
@@ -1921,55 +1824,6 @@ class Client(object):
     def display_name(self):
         """Returns the Client display name"""
         return self._properties['client']['displayName']
-
-    @display_name.setter
-    def display_name(self, display_name):
-        """setter to set the display name of the client
-
-        Args:
-            display_name    (str)   -- Display name to be set for the client
-
-        """
-        update_properties = self.properties
-        update_properties['client']['displayName'] = display_name
-        self.update_properties(update_properties)
-
-    @property
-    def description(self):
-        """Returns the Client description"""
-        return self._properties.get('client', {}).get('clientDescription')
-
-    @description.setter
-    def description(self, description):
-        """setter to set the display name of the client
-
-        Args:
-            description    (str)   -- description to be set for the client
-
-        """
-        update_properties = self.properties
-        update_properties['client']['clientDescription'] = description
-        self.update_properties(update_properties)
-
-    @property
-    def timezone(self):
-        """Returns the timezone of the client"""
-        return self._timezone
-
-    @timezone.setter
-    def timezone(self, timezone=None):
-        """Setter to set the timezone of the client
-
-        Args:
-            timezone    (str)   -- timezone to be set for the client
-
-        **Note** make use of TIMEZONES dict in constants.py to set timezone
-
-        """
-        update_properties = self.properties
-        update_properties['client']['TimeZone']['TimeZoneName'] = timezone
-        update_properties['client']['timezoneSetByUser'] = True
-        self.update_properties(update_properties)
 
     @property
     def commcell_name(self):
@@ -2104,6 +1958,7 @@ class Client(object):
         """Returns the instance of the Agents class representing the list of Agents
         installed / configured on the Client.
         """
+
         if self._agents is None:
             self._agents = Agents(self)
 
@@ -2145,11 +2000,6 @@ class Client(object):
 
         return self._network_throttle
 
-    @property
-    def is_cluster(self):
-        """Returns True if the client is of cluster type"""
-        return 'clusterGroupAssociation' in self._properties['clusterClientProperties']
-
     def enable_backup(self):
         """Enable Backup for this Client.
 
@@ -2183,18 +2033,12 @@ class Client(object):
         else:
             raise SDKException('Response', '101', self._update_response_(response.text))
 
-    def enable_backup_at_time(self, enable_time, **kwargs):
+    def enable_backup_at_time(self, enable_time):
         """Disables Backup if not already disabled, and enables at the time specified.
 
             Args:
-                enable_time (str)  --  Time to enable the backup at, in 24 Hour format
+                enable_time (str)  --  UTC time to enable the backup at, in 24 Hour format
                     format: YYYY-MM-DD HH:mm:ss
-
-                **kwargs (dict)  -- dict of keyword arguments as follows
-
-                    timezone    (str)   -- timezone to be used of the operation
-
-                        **Note** make use of TIMEZONES dict in constants.py to pass timezone
 
             Raises:
                 SDKException:
@@ -2215,7 +2059,7 @@ class Client(object):
         except ValueError:
             raise SDKException('Client', '104')
 
-        request_json = self._request_json('Backup', False, enable_time, **kwargs)
+        request_json = self._request_json('Backup', False, enable_time)
 
         flag, response = self._cvpysdk_object.make_request('POST', self._CLIENT, request_json)
 
@@ -2303,18 +2147,12 @@ class Client(object):
         else:
             raise SDKException('Response', '101', self._update_response_(response.text))
 
-    def enable_restore_at_time(self, enable_time, **kwargs):
+    def enable_restore_at_time(self, enable_time):
         """Disables Restore if not already disabled, and enables at the time specified.
 
             Args:
-                enable_time (str)  --  Time to enable the restore at, in 24 Hour format
+                enable_time (str)  --  UTC time to enable the restore at, in 24 Hour format
                     format: YYYY-MM-DD HH:mm:ss
-
-                **kwargs (dict)  -- dict of keyword arguments as follows
-
-                    timezone    (str)   -- timezone to be used of the operation
-
-                        **Note** make use of TIMEZONES dict in constants.py to pass timezone
 
             Raises:
                 SDKException:
@@ -2335,7 +2173,7 @@ class Client(object):
         except ValueError:
             raise SDKException('Client', '104')
 
-        request_json = self._request_json('Restore', False, enable_time, **kwargs)
+        request_json = self._request_json('Restore', False, enable_time)
 
         flag, response = self._cvpysdk_object.make_request('POST', self._CLIENT, request_json)
 
@@ -2423,18 +2261,12 @@ class Client(object):
         else:
             raise SDKException('Response', '101', self._update_response_(response.text))
 
-    def enable_data_aging_at_time(self, enable_time, **kwargs):
+    def enable_data_aging_at_time(self, enable_time):
         """Disables Data Aging if not already disabled, and enables at the time specified.
 
             Args:
-                enable_time (str)  --  Time to enable the data aging at, in 24 Hour format
+                enable_time (str)  --  UTC time to enable the data aging at, in 24 Hour format
                     format: YYYY-MM-DD HH:mm:ss
-
-                **kwargs (dict)  -- dict of keyword arguments as follows
-
-                    timezone    (str)   -- timezone to be used of the operation
-
-                        **Note** make use of TIMEZONES dict in constants.py to pass timezone
 
             Raises:
                 SDKException:
@@ -2455,7 +2287,7 @@ class Client(object):
         except ValueError:
             raise SDKException('Client', '104')
 
-        request_json = self._request_json('Data Aging', False, enable_time, **kwargs)
+        request_json = self._request_json('Data Aging', False, enable_time)
 
         flag, response = self._cvpysdk_object.make_request('POST', self._CLIENT, request_json)
 
@@ -2816,7 +2648,17 @@ class Client(object):
 
                     if response is not success
         """
-        return self.readiness_details.is_ready()
+        flag, response = self._cvpysdk_object.make_request(
+            'GET', self._services['CHECK_READINESS'] % self.client_id
+        )
+
+        if flag:
+            if response.json():
+                return 'isClientReady' in response.json() and response.json()['isClientReady'] == 1
+            else:
+                raise SDKException('Response', '102')
+        else:
+            raise SDKException('Response', '101', self._update_response_(response.text))
 
     def upload_file(self, source_file_path, destination_folder):
         """Upload the specified source file to destination path on the client machine
@@ -3010,18 +2852,18 @@ class Client(object):
 
         if wait_for_service_restart:
             start_time = time.time()
-            timeout = timeout * 60
 
-            while time.time() - start_time < timeout:
+            while True:
                 try:
                     if self.is_ready:
-                        return
-                except Exception:
+                        break
+
+                    if time.time() - start_time > timeout * 60:
+                        raise SDKException('Client', '107')
+                except requests.ConnectionError:
                     continue
 
                 time.sleep(5)
-
-            raise SDKException('Client', '107')
 
     def push_network_config(self):
         """Performs a push network configuration on the client
@@ -3264,6 +3106,55 @@ class Client(object):
         else:
             raise SDKException('Response', '101', self._update_response_(response.text))
 
+    def set_description(self, description):
+        """Set description for client.
+
+            Args:
+                description    (str)   --  text of description
+                    default:    None
+
+            Returns:
+                None    -   if property set successfully
+
+            Raises:
+                SDKException:
+                    if failed to set description property
+        """
+        request_json = {
+            "clientProperties": {
+                "client": {
+                    "clientDescription": description
+                }
+            },
+            "association": {
+                "entity": [
+                    {
+                        "clientName": self.client_name
+                    }
+                ]
+            }
+        }
+
+        flag, response = self._cvpysdk_object.make_request('POST', self._CLIENT, request_json)
+
+        self._get_client_properties()
+
+        if flag:
+            if response.json() and 'response' in response.json():
+                error_code = response.json()['response'][0]['errorCode']
+
+                if error_code == 0:
+                    return
+                elif 'errorMessage' in response.json()['response'][0]:
+                    error_message = response.json()['response'][0]['errorMessage']
+
+                    o_str = 'Failed to set client\'s description\nError: "{0}"'.format(error_message)
+                    raise SDKException('Client', '102', o_str)
+            else:
+                raise SDKException('Response', '102')
+        else:
+            raise SDKException('Response', '101', self._update_response_(response.text))
+
     def add_additional_setting(self, category, key_name, data_type, value):
         """Adds registry key to the client property
 
@@ -3413,48 +3304,6 @@ class Client(object):
                             error_message)
                         raise SDKException('Client', '102', o_str)
                     self._license_info = None
-            else:
-                raise SDKException('Response', '102')
-        else:
-            raise SDKException('Response', '101', self._update_response_(response.text))
-        
-    def retire(self):
-        """Uninstalls the CommVault Software on the client, releases the license and deletes the client.
-        
-        Returns:
-            Job - job object of the uninstall job
-            
-        Raises:
-                                        
-            SDKException:
-            
-                if failed to retire client
-                            
-                if response is empty
-                        
-                if response code is not as expected
-        """
-        request_json = { 
-            "client": { 
-                "clientId": int(self.client_id),
-                "clientName": self.client_name
-            }
-        }
-        flag, response = self._cvpysdk_object.make_request(
-            'DELETE', self._services['RETIRE'] % self.client_id, request_json
-        )
-        
-        if flag:
-            if response.json() and 'response' in response.json():
-                error_code = response.json()['response']['errorCode']
-                error_string = response.json()['response'].get('errorString', '')
-
-                if error_code == 0:
-                    if 'jobId' in response.json():
-                        return Job(self._commcell_object, (response.json()['jobId']))
-                else:
-                    o_str = 'Failed to Retire Client. Error: "{0}"'.format(error_string)
-                    raise SDKException('Client', '102', o_str)  
             else:
                 raise SDKException('Response', '102')
         else:
@@ -3666,7 +3515,7 @@ class Client(object):
 
                     if response is not success
         """
-        request_json = self._request_json(option='Backup', job_start_time=job_start_time_value)
+        request_json = self._request_json(job_start_time=job_start_time_value)
 
         flag, response = self._cvpysdk_object.make_request('POST', self._CLIENT, request_json)
 
@@ -3688,124 +3537,9 @@ class Client(object):
         else:
             raise SDKException('Response', '101', self._update_response_(response.text))
 
-    def uninstall_software(self, force_uninstall=True):
-        """
-        Performs readiness check on the client
-
-            Args:
-                force_uninstall (bool): Uninstalls packages forcibly. Defaults to True.
-
-
-            Returns:
-                The job object of the uninstall software job
-
-            Raises:
-                SDKException:
-                    if response is empty
-
-                    if response is not success
-        """
-
-        uninstall = Uninstall(self._commcell_object)
-
-        return uninstall.uninstall_software(self.client_name, force_uninstall=force_uninstall)
-
     @property
     def job_start_time(self):
         """Returns the job start time"""
 
         return self._job_start_time
 
-    @property
-    def readiness_details(self):
-        """ returns instance of readiness"""
-        if self._readiness is None:
-            self._readiness = _Readiness(self._commcell_object, self.client_id)
-        return self._readiness
-
-
-class _Readiness:
-    """ Class for checking the connection details of a client """
-    def __init__(self, commcell, client_id):
-        self.__commcell = commcell
-        self.__client_id = client_id
-        self._reason = None
-        self._detail = None
-        self._status = None
-        self._dict = None
-
-    def __fetch_readiness_details(self, network=True, resource=False, disabled_clients=False):
-        """
-        Performs readiness check on the client
-
-            Args:
-                network (bool): Performs Network Readiness Check. Defaults to True.
-                resource (bool): Performs Resource Readiness Check. Defaults to False.
-                disabled_clients (bool): Includes backup activity disabled clients. Defaults to False.
-
-            Raises:
-                SDKException:
-                    if response is empty
-
-                    if response is not success
-        """
-        flag, response = self.__commcell._cvpysdk_object.make_request(
-            'GET', self.__commcell._services['CHECK_READINESS'] % (self.__client_id, network, resource, disabled_clients)
-        )
-
-        if flag:
-            if response.json():
-                self._dict = response.json()
-                self.__check_reason()
-                self.__check_status()
-                self.__check_details()
-            else:
-                raise SDKException('Response', '102')
-        else:
-            raise SDKException('Response', '101', self.__commcell._update_response_(response.text))
-
-    def is_ready(self, network=True, resource=False, disabled_clients=False):
-        """Performs readiness check on the client
-
-        Returns: connection status
-
-        """
-        self.__fetch_readiness_details(network, resource, disabled_clients)
-        return self._status == "Ready."
-
-    def __check_reason(self):
-        try:
-            self._reason = self._dict['summary'][0]['reason']
-        except KeyError:
-            pass
-
-    def __check_status(self):
-        try:
-            self._status = self._dict['summary'][0]['status']
-        except KeyError:
-            pass
-
-    def __check_details(self):
-        try:
-            self._detail = self._dict['detail']
-        except KeyError:
-            pass
-
-    def get_failure_reason(self):
-        """ Retrieve client readiness failure reason"""
-        if not self._dict:
-            self.__fetch_readiness_details()
-        return self._reason
-
-    @property
-    def status(self):
-        """ Retrieve client readiness status """
-        if not self._dict:
-            self.__fetch_readiness_details()
-        return self._status
-
-    def get_detail(self):
-        """ Retrieve client readiness details """
-        if not self._dict:
-            self.__fetch_readiness_details()
-        return self._detail

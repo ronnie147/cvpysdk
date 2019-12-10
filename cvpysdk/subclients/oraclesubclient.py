@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """
@@ -163,6 +153,17 @@ class OracleSubclient(DatabaseSubclient):
             self.enable_intelli_snap(snap_engine)
 
     @property
+    def content(self):
+        return [
+            f'Backup data: {self.data}',
+            f'Backup archive log: {self.backup_archive_log}'
+        ]
+    
+    @property
+    def storage_policy(self):
+        return self.data_sp
+
+    @property
     def data(self):
         """
         Getter to fetch if data enabled in oracle subclient or not
@@ -284,8 +285,11 @@ class OracleSubclient(DatabaseSubclient):
         Returns:
             string - string representing data storage policy
         """
-        return self._commonProperties['storageDevice'][
-            'dataBackupStoragePolicy']['storagePolicyName']
+        try:
+            return self._commonProperties['storageDevice'][
+                'dataBackupStoragePolicy']['storagePolicyName']
+        except:
+            return None
 
     @property
     def is_table_browse_enabled(self):

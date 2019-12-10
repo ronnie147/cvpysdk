@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """Main file for performing backup set operations.
@@ -89,11 +79,7 @@ Backupset:
 
     _process_browse_response()      -- retrieves the items from browse response
 
-    _process_update_request()       --  to process the request using API call
-
     _do_browse()                    -- performs a browse operation with the given options
-
-    update_properties()             -- updates the backupset properties
 
     set_default_backupset()         -- sets the backupset as the default backup set for the agent,
     if not already default
@@ -112,11 +98,6 @@ Backupset:
 
 Backupset instance Attributes
 -----------------------------
-
-    **properties**                  -- returns the properties of backupset
-
-    **name**                        -- returns the name of the backupset
-
     **guid**                        -- treats the backupset GUID as a property
     of the Backupset class
 
@@ -127,7 +108,6 @@ from __future__ import unicode_literals
 
 import threading
 import time
-import copy
 
 from past.builtins import basestring
 
@@ -194,7 +174,7 @@ class Backupsets(object):
             'postgresql': PostgresBackupset,
             "active directory" : ADBackupset,
             'db2': DB2Backupset,
-            'virtual server': VSBackupset
+            'virtual server' : VSBackupset
         }
 
         if self._agent_object.agent_name in ['cloud apps', 'sql server', 'sap hana']:
@@ -262,6 +242,19 @@ class Backupsets(object):
                 )[0][0]
             except IndexError:
                 raise IndexError('No backupset exists with the given Name / Id')
+
+    def __iter__(self):
+        self.collections = list(self.all_backupsets)
+        return self
+        
+    def __next__(self):
+        try:
+            if self.collections:
+                return self.get(self.collections.pop())
+            else:
+                raise StopIteration
+        except SDKException:
+            raise StopIteration
 
     def _get_backupsets(self):
         """Gets all the backupsets associated to the agent specified by agent_object.
@@ -817,7 +810,7 @@ class Backupset(object):
                 error_code = str(response.json()["response"][0]["errorCode"])
 
                 if error_code == "0":
-                    return True, "0", ""
+                    return (True, "0", "")
                 else:
                     error_string = ""
 
@@ -825,9 +818,9 @@ class Backupset(object):
                         error_string = response.json()["response"][0]["errorString"]
 
                     if error_string:
-                        return False, error_code, error_string
+                        return (False, error_code, error_string)
                     else:
-                        return False, error_code, ""
+                        return (False, error_code, "")
             else:
                 raise SDKException('Response', '102')
         else:
@@ -1280,55 +1273,6 @@ class Backupset(object):
         flag, response = self._cvpysdk_object.make_request('POST', self._BROWSE, request_json)
 
         return self._process_browse_response(flag, response, options)
-
-    def update_properties(self, properties_dict):
-        """Updates the backupset properties
-
-            Args:
-                properties_dict (dict)  --  Backupset property dict which is to be updated
-
-            Returns:
-                None
-
-            Raises:
-                SDKException:
-                    if failed to add
-
-                    if response is empty
-
-                    if response code is not as expected
-
-        **Note** self.properties can be used to get a deep copy of all the properties, modify the properties which you
-        need to change and use the update_properties method to set the properties
-
-        """
-        request_json = {
-            "backupsetProperties": {},
-            "association": {
-                "entity": [
-                    {
-                        "clientName": self._client_object.client_name,
-                        "backupsetName": self.backupset_name,
-                        "instanceName": self._instance_object.instance_name,
-                        "appName": self._agent_object.agent_name
-                    }
-                ]
-            }
-        }
-
-        request_json['backupsetProperties'].update(properties_dict)
-        status, _, error_string = self._process_update_reponse(request_json)
-
-        if not status:
-            raise SDKException(
-                'Backupset',
-                '102',
-                'Failed to update backupset property\nError: "{0}"'.format(error_string))
-
-    @property
-    def properties(self):
-        """Returns the backupset properties"""
-        return copy.deepcopy(self._properties)
 
     @property
     def name(self):

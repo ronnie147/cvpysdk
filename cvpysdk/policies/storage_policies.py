@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """Main file for performing storage policy related operations on the commcell.
@@ -189,6 +179,16 @@ class StoragePolicies(object):
             self._commcell_object.commserv_name
         )
 
+    def __iter__(self):
+        self.collections = list(self.all_storage_policies)
+        return self
+
+    def __next__(self):
+        if self.collections:
+            return self.get(self.collections.pop())
+        else:
+            raise StopIteration
+
     def _get_policies(self):
         """Gets all the storage policies associated to the commcell specified by commcell object.
 
@@ -296,8 +296,7 @@ class StoragePolicies(object):
             incremental_sp=None,
             retention_period=5,
             number_of_streams=None,
-            ocum_server=None,
-            dedup_media_agent=None):
+            ocum_server=None):
         """Adds a new Storage Policy to the Commcell.
 
             Args:
@@ -326,9 +325,6 @@ class StoragePolicies(object):
                 ocum_server         (str)         --  On Command Unified Server Name
                 default: None
 
-                dedup_media_agent   (str)          --  name of media agent where deduplication database is hosted.
-                default:None
-
             Raises:
                 SDKException:
                     if type of the storage policy name argument is not string
@@ -345,6 +341,7 @@ class StoragePolicies(object):
 
                     if response is not success
         """
+        from urllib.parse import urlencode
 
         if ((dedup_path is not None and not isinstance(dedup_path, basestring)) or
                 (not (isinstance(storage_policy_name, basestring) and
@@ -366,108 +363,107 @@ class StoragePolicies(object):
         else:
             raise SDKException('Storage', '103')
 
-        request_json = {
-            "storagePolicyCopyInfo": {
-                "library": {
-                    "libraryId": int(disk_library.library_id)
-                },
-                "mediaAgent": {
-                    "mediaAgentId": int(media_agent.media_agent_id)
-                },
-                "retentionRules": {
-                    "retainBackupDataForDays": retention_period
-                }
-            },
-            "storagePolicyName": storage_policy_name
-        }
-
-        if number_of_streams is not None:
-            number_of_streams_dict = {
-                "numberOfStreams": number_of_streams
+        if dedup_path or incremental_sp:
+            encode_dict = {
+                "storagepolicy": storage_policy_name,
+                "mediaagent": media_agent.media_agent_name,
+                "library": disk_library.library_name
             }
-            request_json.update(number_of_streams_dict)
+            if dedup_path:
+                encode_dict["deduppath"] = dedup_path
+            if incremental_sp:
+                encode_dict["incstoragepolicy"] = incremental_sp
 
-        if ocum_server is not None:
-            ocum_server_dict1 = {
-                "dfmServer": {
-                    "name": ocum_server,
-                    "id": 0
-                }
-            }
-            ocum_server_dict2 = {
+            web_service = self._POLICY + '?' + urlencode(encode_dict)
+
+            flag, response = self._commcell_object._cvpysdk_object.make_request('PUT', web_service)
+
+            if flag:
+                try:
+                    if response.json():
+                        if 'errorCode' in response.json() and 'errorMessage' in response.json():
+                            error_message = response.json()['errorMessage'].split('\n')[0]
+                            o_str = 'Failed to add storage policy\nError: "{0}"'
+
+                            raise SDKException('Storage', '102', o_str.format(error_message))
+
+                except ValueError:
+                    if response.text:
+                        # initialize the policies again
+                        # so the policies object has all the policies
+                        self.refresh()
+                        return response.text.strip()
+                    else:
+                        raise SDKException('Response', '102')
+            else:
+                response_string = self._commcell_object._update_response_(response.text)
+                raise SDKException('Response', '101', response_string)
+        else:
+            request_json = {
                 "storagePolicyCopyInfo": {
-                    "storagePolicyFlags": {
-                        "enableSnapshot": 1
+                    "library": {
+                        "libraryId": int(disk_library.library_id)
+                    },
+                    "mediaAgent": {
+                        "mediaAgentId": int(media_agent.media_agent_id)
                     },
                     "retentionRules": {
-                        "retainBackupDataForCycles": 1
+                        "retainBackupDataForDays": retention_period
                     }
-                }
+                },
+                "storagePolicyName": storage_policy_name
             }
 
-            request_json["storagePolicyCopyInfo"].update(ocum_server_dict2["storagePolicyCopyInfo"])
-            request_json.update(ocum_server_dict1)
+            if number_of_streams is not None:
+                number_of_streams_dict = {
+                    "numberOfStreams": number_of_streams
+                }
+                request_json.update(number_of_streams_dict)
 
-        if dedup_path:
-            if dedup_media_agent is None:
-                dedup_media_agent = media_agent
-            elif self._commcell_object.media_agents.has_media_agent(dedup_media_agent):
-                pass
-            else:
-                raise SDKException('Storage', '103')
-
-            dedup_info = {
-                "storagePolicyCopyInfo": {
-                    "dedupeFlags": {
-                        "enableDeduplication": 1
-                    },
-                    "DDBPartitionInfo": {
-                        "maInfoList": [{
-                            "mediaAgent": {
-                                "mediaAgentName": dedup_media_agent.media_agent_name
+            if ocum_server is not None:
+                ocum_server_dict1 = {
+                    "dfmServer": {
+                        "name": ocum_server,
+                        "id": 0
+                        }
+                    }
+                ocum_server_dict2 = {
+                    "storagePolicyCopyInfo": {
+                        "storagePolicyFlags": {
+                            "enableSnapshot": 1
                             },
-                            "subStoreList": [{
-                                "accessPath": {
-                                    "path": dedup_path
-                                }
-                            }]
-                        }]
+                        "retentionRules" : {
+                            "retainBackupDataForCycles": 1
+                            }
+                        }
                     }
-                }
-            }
 
-            request_json["storagePolicyCopyInfo"].update(dedup_info["storagePolicyCopyInfo"])
+                request_json["storagePolicyCopyInfo"].update(ocum_server_dict2["storagePolicyCopyInfo"])
+                request_json.update(ocum_server_dict1)
 
-        if incremental_sp:
-            incremental_sp_info = {
-                "incrementalStoragePolicy": incremental_sp
-            }
+            flag, response = self._commcell_object._cvpysdk_object.make_request(
+                'POST', self._POLICY, request_json
+            )
 
-            request_json.update(incremental_sp_info)
+            if flag:
+                if response.json():
+                    if 'archiveGroupCopy' in response.json():
+                        # initialize the policies again
+                        # so the policies object has all the policies
+                        self.refresh()
 
-        flag, response = self._commcell_object._cvpysdk_object.make_request(
-            'POST', self._POLICY, request_json
-        )
+                    elif 'error' in response.json():
+                        error_message = response.json()['error']['errorMessage']
+                        o_str = 'Failed to create storage policy\nError: "{0}"'
 
-        if flag:
-            if response.json():
-                if 'error' in response.json() and response.json()['error']['errorCode'] == 0:
-                    # initialize the policies again
-                    # so the policies object has all the policies
-                    self.refresh()
-
+                        raise SDKException('Storage', '102', o_str.format(error_message))
                 else:
-                    error_message = response.json()['error']['errorMessage']
-                    o_str = 'Failed to create storage policy\nError: "{0}"'
-
-                    raise SDKException('Storage', '102', o_str.format(error_message))
+                    raise SDKException('Response', '102')
             else:
-                raise SDKException('Response', '102')
-        else:
-            response_string = self._commcell_object._update_response_(response.text)
-            raise SDKException('Response', '101', response_string)
+                response_string = self._commcell_object._update_response_(response.text)
+                raise SDKException('Response', '101', response_string)
 
-        return self.get(storage_policy_name)
+            return self.get(storage_policy_name)
 
     def add_tape_sp(self, storage_policy_name, library, media_agent, drive_pool, scratch_pool):
         """
@@ -983,6 +979,21 @@ class StoragePolicy(object):
     def copies(self):
         """Treats the storage policy copies as a read-only attribute"""
         return self._copies
+
+    @property
+    def retention(self):
+        for copy in self._copies:
+            copyname = copy.lower().find('primary')
+            if copyname == -1:
+                continue
+            
+            storage_policy_copy = self.get_copy(copy)
+            copy_retention = storage_policy_copy.copy_retention
+            
+            if copy_retention['days'] == -1 and copy_retention['cycles']:
+                return "Infinite"
+            else:
+                return f"{copy_retention['days']} days, {copy_retention['cycles']} cycles"
 
     @property
     def storage_policy_id(self):
@@ -1924,7 +1935,7 @@ class StoragePolicy(object):
                 """.format(store_id, sub_store_id, media_agent_name, dedupe_path)
         self._commcell_object._qoperation_execute(request_xml)
 
-    def run_recon(self, copy_name, sp_name, store_id, full_reconstruction=0, use_scalable_resource='false'):
+    def run_recon(self, copy_name, sp_name, store_id):
         """ Runs non-mem DB Reconstruction job
 
             Args:
@@ -1933,16 +1944,6 @@ class StoragePolicy(object):
                sp_name      (str)  --  name of the storage policy
 
                store_id     (str)  --  SIDB store id associated with the copy
-
-               full_reconstruction      (int)  --  flag to enable full reconstruction job
-                                                   Valid values:
-                                                   0: to start regular reconstruction job
-                                                   1: to start full reconstruction job
-
-               use_scalable_resource    (str)  --  to enable scalable resources
-                                                   Valid values:
-                                                   'true': to start old way reconstruction job
-                                                   'false': to start reconstruction job with scalable resources
         """
         request_xml = """
         <TMMsg_DedupSyncTaskReq flags="0">
@@ -1955,7 +1956,7 @@ class StoragePolicy(object):
                     <adminOpts>
                         <contentIndexingOption subClientBasedAnalytics="0"/>
                         <dedupDBSyncOption SIDBStoreId="{2}"/>
-                        <reconstructDedupDBOption allowMaximum="0" flags="{4}" noOfStreams="0" useScallableResourceManagement="{3}">
+                        <reconstructDedupDBOption allowMaximum="0" flags="0" noOfStreams="0">
                         <mediaAgent _type_="11" mediaAgentId="0" mediaAgentName="&lt;ANY MEDIAAGENT>"/>
                         </reconstructDedupDBOption>
                     </adminOpts>
@@ -1970,7 +1971,7 @@ class StoragePolicy(object):
             </task>
             </taskInfo>
         </TMMsg_DedupSyncTaskReq>
-        """.format(copy_name, sp_name, store_id, use_scalable_resource, full_reconstruction)
+        """.format(copy_name, sp_name, store_id)
         flag, response = self._commcell_object._cvpysdk_object.make_request(
             'POST', self._commcell_object._services['EXECUTE_QCOMMAND'], request_xml
         )

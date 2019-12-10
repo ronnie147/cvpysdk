@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """File for operating on a Postgres Server Subclient
@@ -25,9 +15,6 @@ PostgresSubclient: Derived class from Subclient Base class, representing a HANA 
 
 PostgresSubclient:
 ==================
-
-    collect_object_list()                --  Sets the collect object list flag for the subclient
-    as the value provided as input
 
     _backup_request_json()               --  prepares the json for the backup request
 
@@ -49,8 +36,6 @@ PostgresSubclient instance Attributes
 
     **content**                          --  returns list of databases which are part
     of subclient content
-
-    **collect_object_list**              --  Returns the collect object list flag of the subclient
 
 """
 from __future__ import unicode_literals
@@ -74,13 +59,13 @@ class PostgresSubclient(DatabaseSubclient):
             subclient_id      (str)     -- id of the subclient
 
         """
+        super(PostgresSubclient, self).__init__(
+            backupset_object, subclient_name, subclient_id)
         self._postgres_properties = {}
         self._postgres_browse_options = None
         self._postgres_destination = None
         self._postgres_file_options = None
         self._postgres_restore_options = None
-        super(PostgresSubclient, self).__init__(
-            backupset_object, subclient_name, subclient_id)
 
     @property
     def content(self):
@@ -97,43 +82,6 @@ class PostgresSubclient(DatabaseSubclient):
                         database_list.append(database[
                             'postgreSQLContent']['databaseName'].lstrip("/"))
             return database_list
-
-    @property
-    def collect_object_list(self):
-        """Returns the collect object list flag of the subclient.
-
-        Returns:
-
-            (bool)  --  True if flag is set
-                        False if the flag is not set
-
-        """
-        return self._subclient_properties.get(
-            'postgreSQLSubclientProp', {}).get(
-                'collectObjectListDuringBackup', False)
-
-    @collect_object_list.setter
-    def collect_object_list(self, value):
-        """Sets the collect object list flag for the subclient as the value provided as input.
-
-        Args:
-
-            value   (bool)  --  Boolean value to set as flag
-
-            Raises:
-                SDKException:
-                    if failed to set collect object list flag
-
-                    if the type of value input is not bool
-        """
-        if isinstance(value, bool):
-            self._set_subclient_properties(
-                "_subclient_properties['postgreSQLSubclientProp']['collectObjectListDuringBackup']",
-                value)
-        else:
-            raise SDKException(
-                'Subclient', '102', 'Expecting a boolean value here'
-            )
 
     def _backup_request_json(
             self,
@@ -181,6 +129,7 @@ class PostgresSubclient(DatabaseSubclient):
             "subClientProperties":
                 {
                     "postgreSQLSubclientProp": self._postgres_properties,
+                    "impersonateUser": self._impersonateUser,
                     "proxyClient": self._proxyClient,
                     "subClientEntity": self._subClientEntity,
                     "content": self._content,

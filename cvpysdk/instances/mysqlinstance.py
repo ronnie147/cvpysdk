@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """
@@ -22,7 +12,7 @@ File for operating on a MYSQL Instance.
 MYSQLInstance is the only class defined in this file.
 
 MYSQLInstance: Derived class from Instance Base class, representing an
-                MYSQL instance, and to perform operations on that instance
+                            MYSQL instance, and to perform operations on that instance
 
 MYSQLInstance:
 ==============
@@ -71,10 +61,6 @@ MYSQLInstance instance Attributes:
 
     **autodiscovery_enabled**           -- Returns the MySQL Server auto discovery enabled flag
 
-    **xtrabackup_bin_path**             -- Returns the MySQL Server xtrabackup bin path
-
-    **is_xtrabackup_enabled**           -- Returns the MySQL Server xtrabackup enabled flag
-
     **proxy_options**                   -- Returns the MySQL Server proxy options
 
 
@@ -117,82 +103,42 @@ class MYSQLInstance(Instance):
 
     @property
     def port(self):
-        """Returns the MySQL Server Port number.
-
-        Returns:
-            (str)   --  MySql server port number
-
-        """
+        """Returns the MySQL Server Port number."""
         return self._properties.get('mySqlInstance', {}).get('port', None)
 
     @property
     def mysql_username(self):
-        """Returns the MySQL Server username.
-
-        Returns:
-            (str)   --  MySql server SA username
-
-        """
+        """Returns the MySQL Server username."""
         return self._properties.get('mySqlInstance', {}).get('SAUser', {}).get('userName', None)
 
     @property
     def nt_username(self):
-        """Returns the MySQL Server nt username.
-
-        Returns:
-            (str)   --  MySql server NT username
-
-        """
+        """Returns the MySQL Server nt username."""
         return self._properties.get('mySqlInstance', {}).get('NTUser', {}).get('userName', None)
 
     @property
     def config_file(self):
-        """Returns the MySQL Server Config File location.
-
-        Returns:
-            (str)   --  MySql server config file location
-
-        """
+        """Returns the MySQL Server Config File location."""
         return self._properties.get('mySqlInstance', {}).get('ConfigFile', None)
 
     @property
     def binary_directory(self):
-        """Returns the MySQL Server Binary File location.
-
-        Returns:
-            (str)   --  MySql server binary directory
-
-        """
+        """Returns the MySQL Server Binary File location."""
         return self._properties.get('mySqlInstance', {}).get('BinaryDirectory', None)
 
     @property
     def version(self):
-        """Returns the MySQL Server version number.
-
-        Returns:
-            (str)   --  MySql server version
-
-        """
+        """Returns the MySQL Server version number."""
         return self._properties.get('mySqlInstance', {}).get('version', None)
 
     @property
     def log_data_directory(self):
-        """Returns the MySQL Server log data directory.
-
-        Returns:
-            (str)   --  MySql server log directory path
-
-        """
+        """Returns the MySQL Server log data directory."""
         return self._properties.get('mySqlInstance', {}).get('LogDataDirectory', None)
 
     @property
     def log_backup_sp_details(self):
-        """Returns the MySQL Server Log backup SP details
-
-        Returns:
-            (dict)  --  MySql server log backup storage policy information
-
-        """
+        """Returns the MySQL Server Log backup SP details"""
         log_storage_policy_name = self._properties.get('mySqlInstance', {}).get(
             'logStoragePolicy', {}).get('storagePolicyName', None)
         log_storage_policy_id = self._properties.get('mySqlInstance', {}).get(
@@ -204,12 +150,7 @@ class MYSQLInstance(Instance):
 
     @property
     def command_line_sp_details(self):
-        """Returns the MySQL Server commandline SP details.
-
-        Returns:
-            (dict)  --  MySql server commnadline storage policy information
-
-        """
+        """Returns the MySQL Server commandline SP details."""
         cmd_storage_policy_name = self._properties.get('mySqlInstance', {}).get(
             'mysqlStorageDevice', {}).get('commandLineStoragePolicy', {}).get(
                 'storagePolicyName', None)
@@ -223,57 +164,25 @@ class MYSQLInstance(Instance):
 
     @property
     def autodiscovery_enabled(self):
-        """Returns the MySQL Server auto discovery enabled flag
-
-        Returns:
-            (bool)  --  True if auto discovery enabled
-                        False if auto discovery not enabled
-
-        """
+        """Returns the MySQL Server auto discovery enabled flag"""
         return self._properties.get('mySqlInstance', {}).get('EnableAutoDiscovery', False)
 
     @property
-    def xtrabackup_bin_path(self):
-        """Returns the MySQL Server xtrabackup bin path
-
-        Returns:
-            (str)   --  MySql server xtrabackup binary path
-
-        """
-        return self._properties.get(
-            'mySqlInstance', {}).get(
-                'xtraBackupSettings', {}).get('xtraBackupBinPath', "")
-
-    @property
-    def is_xtrabackup_enabled(self):
-        """Returns the MySQL Server xtrabackup enabled flag
-
-        Returns:
-            (bool)  --  True if xtrabackup is enabled
-                        False if xtrabackup is not enabled
-
-        """
-        return self._properties.get(
-            'mySqlInstance', {}).get(
-                'xtraBackupSettings', {}).get('enableXtraBackup', False)
-
-    @property
     def proxy_options(self):
-        """Returns the MySQL Server proxy options
-
-        Returns:
-            (dict)  --  MySql server proxy information
-
-        """
-        proxy_settings = self._properties.get('mySqlInstance', {}).get('proxySettings', {})
+        """Returns the MySQL Server proxy options"""
+        is_use_ssl = self._properties.get('mySqlInstance', {}).get('proxySettings', {}).get(
+            'isUseSSL', None)
+        is_proxy_enabled = self._properties.get('mySqlInstance', {}).get(
+            'proxySettings', {}).get('isProxyEnabled', None)
+        run_backup_on_proxy = self._properties.get('mySqlInstance', {}).get(
+            'proxySettings', {}).get('runBackupOnProxy', None)
+        proxy_instance_id = self._properties.get('mySqlInstance', {}).get(
+            'proxySettings', {}).get('proxyInstance', {}).get('instanceId', None)
         proxy_opt = {
-            "isUseSSL": proxy_settings.get('isUseSSL', False),
-            "isProxyEnabled": proxy_settings.get('isProxyEnabled', False),
-            "runBackupOnProxy": proxy_settings.get('runBackupOnProxy', False),
-            "instanceId": proxy_settings.get('proxyInstance', {}).get('instanceId', None),
-            "instanceName": proxy_settings.get('proxyInstance', {}).get('instanceName', None),
-            "clientId": proxy_settings.get('proxyInstance', {}).get('clientId', None),
-            "clientName": proxy_settings.get('proxyInstance', {}).get('clientName', None)}
+            "isUseSSL": is_use_ssl,
+            "isProxyEnabled": is_proxy_enabled,
+            "runBackupOnProxy": run_backup_on_proxy,
+            "instanceId": proxy_instance_id}
         return proxy_opt
 
     def _get_instance_properties(self):
@@ -346,9 +255,7 @@ class MYSQLInstance(Instance):
             media_agent=None,
             table_level_restore=False,
             clone_env=False,
-            clone_options=None,
-            redirect_enabled=False,
-            redirect_path=None):
+            clone_options=None):
         """Restores the mysql data/log files specified in the input paths list to the same location.
 
             Args:
@@ -425,16 +332,6 @@ class MYSQLInstance(Instance):
 
                                      }
 
-                redirect_enabled         (bool)  --  boolean to specify if redirect restore is
-                enabled
-
-                    default: False
-
-                redirect_path           (str)   --  Path specified in advanced restore options
-                in order to perform redirect restore
-
-                    default: None
-
             Returns:
                 object - instance of the Job class for this restore job
 
@@ -456,12 +353,6 @@ class MYSQLInstance(Instance):
         if path == []:
             raise SDKException('Instance', '104')
 
-        if dest_client_name is None:
-            dest_client_name = self._agent_object._client_object.client_name
-
-        if dest_instance_name is None:
-            dest_instance_name = self.instance_name
-
         request_json = self._restore_json(
             paths=path,
             staging=staging,
@@ -476,9 +367,7 @@ class MYSQLInstance(Instance):
             media_agent=media_agent,
             table_level_restore=table_level_restore,
             clone_env=clone_env,
-            clone_options=clone_options,
-            redirect_enabled=redirect_enabled,
-            redirect_path=redirect_path)
+            clone_options=clone_options)
 
         return self._process_restore_response(request_json)
 
@@ -575,7 +464,3 @@ class MYSQLInstance(Instance):
 
         if value.get("clone_env", False):
             self.mysql_restore_json["cloneOptions"] = value.get("clone_options", "")
-
-        if value.get("redirect_path"):
-            self.mysql_restore_json["redirectEnabled"] = True
-            self.mysql_restore_json["redirectItems"] = [value.get("redirect_path")]

@@ -1,18 +1,8 @@
 # -*- coding: utf-8 -*-
 # ————————————————————————–
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # ————————————————————————–
 
 """File for operating on a SQL Server Subclient
@@ -23,9 +13,9 @@ SQLServerSubclient: Derived class from Subclient Base class, representing a sql 
 and to perform operations on that subclient
 
 SQLServerSubclient:
-
+    
     _get_subclient_properties()         --  gets the subclient  related properties of SQL subclient.
-
+    
     _get_subclient_properties_json()    --  gets all the subclient  related properties of SQL subclient.
 
     content()                           --  sets the content of the subclient.
@@ -49,21 +39,21 @@ class SQLServerSubclient(DatabaseSubclient):
         and to perform operations on that subclient."""
 
     def _get_subclient_properties(self):
-        """Gets the subclient  related properties of SQL Server subclient.
-
+        """Gets the subclient  related properties of SQL Server subclient.           
+           
         """
-        super(DatabaseSubclient, self)._get_subclient_properties()
+        super(DatabaseSubclient,self)._get_subclient_properties()
 
         self._mssql_subclient_prop = self._subclient_properties.get('mssqlSubClientProp', {})
         self._content = self._subclient_properties.get('content', {})
         self._is_file_group_subclient = self._mssql_subclient_prop.get('sqlSubclientType', False) == 2
-
+    
     def _get_subclient_properties_json(self):
-        """Get the all subclient related properties of this subclient.
-
+        """get the all subclient related properties of this subclient.        
+           
            Returns:
                 dict - all subclient properties put inside a dict
-
+           
         """
         subclient_json = {
             "subClientProperties":
@@ -143,7 +133,7 @@ class SQLServerSubclient(DatabaseSubclient):
                 content.append(sql_server_dict)
 
         self._set_subclient_properties("_content", content)
-
+    
     @property
     def browse(self):
         raise AttributeError("'{0}' object has no attribute '{1}'".format(
@@ -181,28 +171,13 @@ class SQLServerSubclient(DatabaseSubclient):
 
     def backup(
             self,
-            backup_level="Differential",
-            data_options=[]):
+            backup_level="Differential"):
         """Runs a backup job for the subclient of the level specified.
 
             Args:
                 backup_level    (str)   --  level of backup the user wish to run
                         Full / Transaction_Log / Differential
                     default: Differential
-
-                data_options    (list)  --  List of options to be enabled on backup
-
-                The accepted string values are:
-                    * start_log_backup_after_successfull_backup
-                    * copy_only
-                    * allow_diff_backup_on_read_only
-                    * partial_sql_backup
-                    * tail_log_backup
-                    * use_sql_compression
-                    * checksum
-                    * continue_after_error
-
-                    default: []
 
             Returns:
                 object - instance of the Job class for this backup job
@@ -220,96 +195,12 @@ class SQLServerSubclient(DatabaseSubclient):
         if backup_level not in ['full', 'transaction_log', 'differential']:
             raise SDKException('Subclient', '103')
 
-        if data_options:
-            invalid_full_data_opts = ['tail_log_backup', 'allow_diff_backup_on_read_only']
-            invalid_transaction_log_data_opts = [
-                'start_log_backup_after_successfull_backup',
-                'allow_diff_backup_on_read_only',
-                'copy_only']
-            invalid_differential_data_opts = ['tail_log_backup', 'copy_only']
-
-            if 'checksum' in data_options and 'use_sql_compression' in data_options:
-                raise ValueError("checksum or use_sql_compression can be enabled , but not both")
-            if backup_level == 'full' and any(option in data_options for option in invalid_full_data_opts):
-                raise ValueError("{0} are not applicable for full backup".format(invalid_full_data_opts))
-            elif backup_level == 'transaction_log' and any(option in data_options
-                                                           for option in invalid_transaction_log_data_opts):
-                raise ValueError("{0} are not applicable for Transaction log backup".format(
-                    invalid_transaction_log_data_opts))
-            elif backup_level == 'differential' and any(option in data_options
-                                                        for option in invalid_differential_data_opts):
-                raise ValueError("{0} are not applicable for full backup".format(invalid_differential_data_opts))
-
-            request_json = {
-                "taskInfo": {
-                    "associations": [
-                        {
-                            "subclientName": self.subclient_name,
-                            "backupsetName": self._backupset_object.name,
-                            "instanceName": self._instance_object.name,
-                            "appName": self._agent_object.name,
-                            "clientName": self._client_object.name
-                        }
-                    ],
-                    "task": {
-                        "taskType": 1,
-                        "initiatedFrom": 2,
-                        "policyType": 0,
-                    },
-                    "subTasks": [
-                        {
-                            "subTaskOperation": 1,
-                            "subTask": {
-                                "subTaskType": 2,
-                                "operationType": 2
-                            },
-                            "options": {
-                                "backupOpts": {
-                                    "truncateLogsOnSource": False,
-                                    "sybaseSkipFullafterLogBkp": False,
-                                    "notSynthesizeFullFromPrevBackup": False,
-                                    "backupLevel": backup_level.upper(),
-                                    "incLevel": 1,
-                                    "adHocBackup": False,
-                                    "runIncrementalBackup": False,
-                                    "doNotTruncateLog": False,
-                                    "vsaBackupOptions": {},
-                                    "dataOpt": {
-                                        "enableIndexCheckPointing": False,
-                                        "verifySynthFull": True,
-                                        "startLogBackupAfterSuccessfullBackup":
-                                            "start_log_backup_after_successfull_backup" in data_options,
-                                        "tailLogBackup": "tail_log_backup" in data_options,
-                                        "partailSqlBkp": "partial_sql_backup" in data_options,
-                                        "useSqlCompression": "use_sql_compression" in data_options,
-                                        "useCatalogServer": False,
-                                        "enforceTransactionLogUsage": False,
-                                        "copyOnly": "copy_only" in data_options,
-                                        "skipConsistencyCheck": False,
-                                        "skipCatalogPhaseForSnapBackup": True,
-                                        "runIntegrityCheck": False,
-                                        "checksum": "checksum" in data_options,
-                                        "continueaftererror": "continue_after_error" in data_options,
-                                        "allowDiffBackupOnReadOnly": "allow_diff_backup_on_read_only" in data_options
-                                    }
-                                }
-
-                            }
-                        }
-                    ]
-                }
-            }
-
-            backup_service = self._commcell_object._services['CREATE_TASK']
-
-        else:
-            backup_service = self._commcell_object._services['SUBCLIENT_BACKUP'] % (
-                self.subclient_id, backup_level
-            )
-            request_json = {}
+        backup_service = self._commcell_object._services['SUBCLIENT_BACKUP'] % (
+            self.subclient_id, backup_level
+        )
 
         flag, response = self._commcell_object._cvpysdk_object.make_request(
-            'POST', backup_service, payload=request_json
+            'POST', backup_service
         )
 
         return self._process_backup_response(flag, response)
@@ -343,7 +234,7 @@ class SQLServerSubclient(DatabaseSubclient):
 
             Args:
                 subclient_content (list)  --  list of the content to add to the subclient
-
+                
                 action (int)  --   action to perform on subclient
                 1: OVERWRITE, 2: ADD, 3: DELETE
 

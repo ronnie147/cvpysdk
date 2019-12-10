@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """Main file for performing operations on Datasources, and a single Datasource in the Datacube.
@@ -78,10 +68,6 @@ Datasource:
     delete_content()                    --  deletes the contents of the data source.
 
     refresh()                           --  refresh the properties of the datasource
-
-    start_job()                          --  Starts crawl job for the datasource
-
-    get_status()                         --  Gets the status of the datasource
 
 """
 
@@ -183,17 +169,14 @@ class Datasources(object):
         for collection in collections:
             for datasource in collection['datasources']:
                 datasource_dict = {}
+
                 datasource_dict['data_source_id'] = datasource['datasourceId']
                 datasource_dict['data_source_name'] = datasource['datasourceName']
-                datasource_dict['data_source_type'] = SEDS_TYPE_DICT[
-                    datasource['datasourceType']]
-                if 'coreId' in datasource:
-                    datasource_dict['coreId'] = datasource['coreId']
-                if 'description' in datasource:
-                    datasource_dict['description'] = datasource['description']
-                if 'status' in datasource:
-                    datasource_dict['total_count'] = datasource['status']['totalcount']
-                    datasource_dict['state'] = datasource['status']['state']
+                datasource_dict['description'] = datasource['description']
+                datasource_dict['data_source_type'] = SEDS_TYPE_DICT[datasource['datasourceType']]
+                datasource_dict['total_count'] = datasource['status']['totalcount']
+                datasource_dict['state'] = datasource['status']['state']
+
                 _datasources[datasource['datasourceName']] = datasource_dict
 
         return _datasources
@@ -258,7 +241,7 @@ class Datasources(object):
         if not isinstance(datasource_name, basestring):
             raise SDKException('Datacube', '101')
 
-        return self._datasources and datasource_name in self._datasources
+        return self._datasources and datasource_name.lower() in self._datasources
 
     def get(self, datasource_name):
         """Returns a datasource object of the specified datasource name.
@@ -279,6 +262,8 @@ class Datasources(object):
         if not isinstance(datasource_name, basestring):
             raise SDKException('Datacube', '101')
 
+        datasource_name = datasource_name.lower()
+
         if self.has_datasource(datasource_name):
             datasource = self._datasources[datasource_name]
 
@@ -291,8 +276,8 @@ class Datasources(object):
                 datasource_name)
         )
 
-    def add(self, datasource_name, analytics_engine, datasource_type, input_param):
-        """Add a datasource.
+    def add(self, datasource_name, analytics_engine, datasource_type):
+        """Deletes the handler from the commcell.
 
             Args:
                 datasource_name (str)   --  name of the datasource to add to the datacube
@@ -300,7 +285,7 @@ class Datasources(object):
                 analytics_engine (str)  --  name of the analytics engine to be associated with this
                                                 datacube.
 
-                datasource_type (str)  --  type of datasource to add
+                datasource_type (list)  --  type of datasource to add
 
                                             Valid values are:
                                             1: Database
@@ -314,7 +299,6 @@ class Datasources(object):
                                             10: Federated Search
                                             11: Open data source
                                             12: HTTP
-                input_param(list)      -- properties for datasource
             Raises:
                 SDKException:
                     if type of the datasource name argument is not string
@@ -323,7 +307,7 @@ class Datasources(object):
 
                     if type of the datasource_type  argument is not string
 
-                    if failed to add datasource
+                    if failed to delete handler
 
                     if response is empty
 
@@ -340,20 +324,17 @@ class Datasources(object):
         if not isinstance(datasource_type, basestring):
             raise SDKException('Datacube', '101')
 
-        engine_index = None
-        for engine in self._datacube_object.analytics_engines:
-            if engine["clientName"] == analytics_engine:
-                engine_index = self._datacube_object.analytics_engines.index(engine)
-
-        if engine_index is None:
-            raise Exception("Unable to find Index server for client")
+        engine_index = (
+            self._datacube_object.analytics_engines.index(engine)
+            for engine in self._datacube_object.analytics_engines
+            if engine["clientName"] == analytics_engine
+        ).next()
 
         request_json = {
             "collectionReq": {
                 "collectionName": datasource_name,
                 "ciserver": {
-                    "cloudID": self._datacube_object.analytics_engines[engine_index][
-                        "cloudID"]
+                    "cloudID": self._datacube_object.analytics_engines[engine_index]["cloudID"]
                 }
             },
             "dataSource": {
@@ -361,11 +342,8 @@ class Datasources(object):
                 "datasourceType": datasource_type,
                 "attribute": 0,
                 "datasourceName": datasource_name
-
             }
         }
-        if input_param is not None:
-            request_json['dataSource']['properties'] = input_param
 
         flag, response = self._datacube_object._commcell_object._cvpysdk_object.make_request(
             'POST', self._CREATE_DATASOURCE, request_json
@@ -374,7 +352,6 @@ class Datasources(object):
             if 'error' in response.json():
                 error_code = response.json()['error']['errorCode']
                 if error_code == 0:
-                    self.refresh()  # reload new list.
                     return
                 else:
                     error_message = response.json()['error']['errLogMessage']
@@ -382,7 +359,6 @@ class Datasources(object):
                         error_message)
                     raise SDKException('Response', '102', o_str)
             elif 'collections' in response.json():
-                self.refresh()  # reload new list.
                 return
             else:
                 raise SDKException('Response', '102')
@@ -390,6 +366,8 @@ class Datasources(object):
             response_string = self._datacube_object._commcell_object._update_response_(
                 response.text)
             raise SDKException('Response', '101', response_string)
+
+        self.refresh()  # reload new list.
 
     def delete(self, datasource_name):
         """Deletes specified datasource from data cube .
@@ -478,15 +456,6 @@ class Datasource(object):
         self._UPDATE_DATASOURCE_SCHEMA = self._datacube_object._commcell_object._services[
             'UPDATE_DATASOURCE_SCHEMA']
 
-        self._START_JOB_DATASOURCE = self._datacube_object._commcell_object._services[
-            'START_JOB_DATASOURCE']
-
-        self._GET_STATUS_DATASOURCE = self._datacube_object._commcell_object._services[
-            'GET_STATUS_DATASOURCE']
-
-        self._DELETE_DATASOURCE = self._datacube_object._commcell_object._services[
-            'DELETE_DATASOURCE']
-
         self.handlers = None
         self.refresh()
 
@@ -522,84 +491,7 @@ class Datasource(object):
 
         """
         # TODO: Populate self.properties in this method
-        return True
-
-    def start_job(self):
-        """Starts the crawl job for the datasource
-
-                Returns:
-                    Str  -   Job id of crawl job
-
-                Raises:
-                    Exception:
-                        failed to start job
-
-        """
-        flag, response = self._datacube_object._commcell_object._cvpysdk_object.make_request(
-            'POST', self._START_JOB_DATASOURCE % (self._datasource_id))
-
-        if flag:
-            if 'error' in response.json():
-                error_message = response.json()['error']['errLogMessage']
-                o_str = 'Failed to start job on datasource\nError: "{0}"'.format(error_message)
-                raise SDKException('DataCube', '102', o_str)
-            elif response.json() and 'status' in response.json():
-                return response.json()['status']['jobId']
-            else:
-                raise SDKException('Datacube', '102', "Status object not found in response")
-        else:
-            raise SDKException('Response', '101', response.text)
-
-    def delete_datasource(self):
-        """deletes the datasource
-
-                    Returns:
-                        true  -   if success
-
-                    Raises:
-                        Exception:
-                            Error message for failed ops
-
-                """
-        flag, response = self._datacube_object._commcell_object._cvpysdk_object.make_request(
-            'POST', self._DELETE_DATASOURCE % (self._datasource_id))
-
-        if flag:
-            if 'error' in response.json():
-                error_message = response.json()['error']['errLogMessage']
-                o_str = 'Failed to delete datasource\nError: "{0}"'.format(error_message)
-                raise SDKException('DataCube', '102', o_str)
-            else:
-                return True
-        else:
-            raise SDKException('Response', '101', response.text)
-
-    def get_status(self):
-        """Gets status of the datasource.
-
-                Returns:
-                    dict - containing all status information of datasource
-
-                Raises:
-                    Exception:
-                            Failure to find datasource details
-
-        """
-
-        flag, response = self._datacube_object._commcell_object._cvpysdk_object.make_request(
-            'GET', self._GET_STATUS_DATASOURCE % (self._datasource_id))
-
-        if flag:
-            if 'error' in response.json():
-                error_message = response.json()['error']['errLogMessage']
-                o_str = 'Failed to Get status on datasource\nError: "{0}"'.format(error_message)
-                raise SDKException('DataCube', '102', o_str)
-            elif response.json() and 'status' in response.json():
-                return response.json()
-            else:
-                raise SDKException('Datacube', '102', "Status object not found in response")
-        else:
-            raise SDKException('Response', '101', response.text)
+        pass
 
     def get_crawl_history(self, last_crawl_history=False):
         """Gets the Crawling  history for this datasource.
@@ -724,7 +616,7 @@ class Datasource(object):
                 raise SDKException('Datacube', '101')
 
         request_json = {
-            "datasourceId": int(self.datasource_id),
+            "datasourceId": self.datasource_id,
             "schema": {
                 "schemaFields": schema
             }
@@ -769,6 +661,7 @@ class Datasource(object):
         if flag:
             if response.json() and 'errorCode' in response.json():
                 error_code = response.json()['errorCode']
+
                 if error_code == 0:
                     return
                 else:
@@ -800,14 +693,12 @@ class Datasource(object):
         )
 
         if flag:
-            if response.json() and 'error' in response.json():
-                error_message = response.json()['error']['errLogMessage']
-                o_str = 'Failed to do soft delete on datasource\nError: "{0}"'.format(error_message)
-                raise SDKException('DataCube', '102', o_str)
-            else:
-                return
+            return
         else:
-            raise SDKException('Response', '101', response.text)
+            response_string = self._commcell_object._commcell_object._update_response_(
+                response.text
+            )
+            raise SDKException('Response', '101', response_string)
 
     def refresh(self):
         """Refresh the properties of the Datasource."""

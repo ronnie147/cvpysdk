@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """Main file for performing alert operations.
@@ -43,8 +33,6 @@ Alerts:
     _get_entities()             --  returns the list of associations for an alert
 
     _get_alert_json()           --  returns the dict/json required to create an alert
-
-    get_alert_sender()          -- returns the mail sender name as set in the Email server
 
     create_alert(alert_name)    --  returns the instance of Alert class for created alert
 
@@ -388,14 +376,6 @@ class Alerts(object):
             }
         }
 
-        # Check if paramsList is present or not
-        if alert_json.get("paramsList"):
-            alert_detail["alertDetail"]["criteria"]["paramsList"] = alert_json.get("paramsList")
-
-        # Check if additonal mail recipents exist
-        if alert_json.get("nonGalaxyList"):
-            alert_detail["alertDetail"]["nonGalaxyList"] = alert_json.get("nonGalaxyList")
-
         if alert_json.get("user_groups"):
             alert_detail["alertDetail"]["userGroupList"] = {
                 "userGroupListOperationType":alert_json.get("userGroupListOperationType", 0),
@@ -407,21 +387,6 @@ class Alerts(object):
             }
 
         return alert_detail
-
-    def get_alert_sender(self):
-        """
-            Returns the Alert Sender name
-        """
-        get_alert = self._services['EMAIL_SERVER']
-        flag, response = self._cvpysdk_object.make_request('GET', get_alert)
-        if flag:
-            if response.json():
-                return response.json()["senderInfo"]['senderName']
-            else:
-                raise SDKException('Alert', '102', "Failed to get sender address")
-        else:
-            response_string = self._update_response_(response.text)
-            raise SDKException('Response', '101', response_string)
 
 
     def create_alert(self, alert_dict):

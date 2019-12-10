@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """File for operating on an Exchange Subclient.
@@ -184,42 +174,6 @@ class ExchangeSubclient(Subclient):
             "exchangeRestoreDrive": 1,
             "isJournalReport": value.get("journal_report", False),
             "pstFilePath": ""
-        }
-
-    def _json_restore_exchange_common_option(self, value):
-        """
-            setter for  the Exchange Mailbox in place restore common options in restore json
-
-            Args:
-                value   (dict)  --  restore common options need to be included
-
-            Returns:
-                (dict)  -       generated exchange restore common options JSON
-        """
-        if not isinstance(value, dict):
-            raise SDKException('Subclient', '101')
-
-        self._exchange_common_option_restore_json = {
-            "clusterDBBackedup": False,
-            "restoreToDisk": False,
-            "restoreDataInsteadOfStub": True,
-            "offlineMiningRestore": False,
-            "browse": True,
-            "skip": False,
-            "restoreOnlyStubExists": False,
-            "truncateBody": value.get("truncate_body", False),
-            "restoreAsStubs": value.get("restore_as_stubs", False),
-            "copyToObjectStore": False,
-            "onePassRestore": False,
-            "collectMsgsLargerThan": value.get("collect_msgs_larger_than", 1024),
-            "collectMsgsDaysAfter": value.get("collect_msgs_days_after", 30),
-            "unconditionalOverwrite": True,
-            "syncRestore": False,
-            "leaveMessageBody": value.get("leave_message_body", False),
-            "collectMsgWithAttach": value.get("collect_msg_with_attach", False),
-            "truncateBodyToBytes": value.get("truncate_body_to_bytes", 0),
-            "recoverToRecoveredItemsFolder": False,
-            "append": False
         }
 
     def _json_out_of_place_destination_option(self, value):
@@ -483,8 +437,7 @@ class ExchangeSubclient(Subclient):
             self,
             paths,
             overwrite=True,
-            journal_report=False,
-            restore_as_stub=None):
+            journal_report=False):
         """Restores the mailboxes/folders specified in the input paths list to the same location.
 
             Args:
@@ -495,8 +448,6 @@ class ExchangeSubclient(Subclient):
                 journal_report          (bool)  --  Journal report is true for journal and
                                                         contentStore Mailbox
                     default: False
-
-                restore_as_stub                   (dict)  --  setters for common options
 
             Returns:
                 object - instance of the Job class for this restore job
@@ -528,9 +479,6 @@ class ExchangeSubclient(Subclient):
             'backupsetName'] = self._backupset_object.backupset_name
         request_json['taskInfo']['subTasks'][0][
             'options']['restoreOptions']['exchangeOption'] = self._exchange_option_restore_json
-        if restore_as_stub:
-            request_json['taskInfo']['subTasks'][0]['options']['restoreOptions'][
-                'commonOptions'] = self._exchange_common_option_restore_json
 
         request_json["taskInfo"]["subTasks"][0]["options"][
             "restoreOptions"]["browseOption"]['backupset'] = self._exchange_backupset_json
@@ -709,7 +657,7 @@ class ExchangeSubclient(Subclient):
             }
         }
         flag, response = self._cvpysdk_object.make_request(
-            'POST', self._commcell_object._services["RESTORE"], payload_dict)
+            'POST', commcell_obj._services["RESTORE"], payload_dict)
 
         return self._process_backup_response(flag, response)
 
@@ -797,8 +745,7 @@ class ExchangeSubclient(Subclient):
                  Pst task json
         """
         task_json = {
-            "ownerId": self._commcell_object.users.all_users[
-                self._commcell_object.commcell_username],
+            "ownerId": commcell_obj.users.all_users[commcell_obj.commcell_username],
             "taskType": 1,
             "ownerName": self._commcell_object.commcell_username,
             "sequenceNumber": 0,
@@ -851,3 +798,5 @@ class ExchangeSubclient(Subclient):
             "createNewIndex": False
         }
         return data_json
+
+

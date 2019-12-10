@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """Main file for performing subclient operations.
@@ -79,15 +69,11 @@ Subclient:
 
     _process_browse_response()  --  processes response received for both Browse and Find request
 
-    _common_backup_options()    --  Generates the advanced job options dict
-
     _json_task()                --  setter for task property
 
     _json_restore_subtask()     --  setter for sub task property
 
     _association_json()         --  setter for association property
-
-    update_properties()         --  To update the subclient properties
 
     description()               --  update the description of the subclient
 
@@ -130,14 +116,6 @@ Subclient:
 Subclient Instance Attributes:
 ==============================
 
-    **properties**                      --  returns the properties of the subclient
-
-    **name**                            --  returns the name of the subclient
-
-    **display_name**                    --  returns the display name of the subclient
-
-    **description**                     --  returns the description of the subclient
-
     **snapshot_engine_name**            --  returns snapshot engine name associated
     with the subclient
 
@@ -153,7 +131,6 @@ from __future__ import unicode_literals
 
 import math
 import time
-import copy
 
 from past.builtins import basestring
 from future.standard_library import install_aliases
@@ -288,6 +265,7 @@ class Subclients(object):
             'sybase': SybaseSubclient,
             'sap for oracle': SAPOracleSubclient,
             "exchange mailbox": [ExchangeSubclient, CaseSubclient],
+            "exchange mailbox (classic)": [ExchangeSubclient, CaseSubclient],
             'mysql': MYSQLSubclient,
             'exchange database': ExchangeDatabaseSubclient,
             'postgresql': PostgresSubclient,
@@ -393,6 +371,16 @@ class Subclients(object):
                 )[0][0]
             except IndexError:
                 raise IndexError('No subclient exists with the given Name / Id')
+
+    def __iter__(self):
+        self.collections = list(self.all_subclients.keys())
+        return self
+        
+    def __next__(self):
+        if self.collections:
+            return self.get(self.collections.pop())
+        else:
+            raise StopIteration
 
     def _get_subclients(self):
         """Gets all the subclients associated to the client specified by the backupset object.
@@ -677,9 +665,10 @@ class Subclients(object):
             }
         }
         if pre_scan_cmd is not None:
-            request_json["subClientProperties"]["commonProperties"]["prepostProcess"] = {
+            request_json["subClientProperties"]["commonProperties"]["prepostProcess"] = \
+                {
                 "runAs": 1,
-                "preScanCommand": pre_scan_cmd
+                "preScanCommand": pre_scan_cmd,
             }
 
         if self._agent_object.agent_name == 'sql server':
@@ -965,6 +954,9 @@ class Subclient(object):
 
                 if 'proxyClient' in self._subclient_properties:
                     self._proxyClient = self._subclient_properties['proxyClient']
+                    
+                if 'content' in self._subclient_properties:
+                    self._content = self._subclient_properties['content']
 
             else:
                 raise SDKException('Response', '102')
@@ -1116,16 +1108,10 @@ class Subclient(object):
         if flag:
             if response.json():
                 if "jobIds" in response.json():
-                    if len(response.json()['jobIds']) == 1:
-                        return Job(self._commcell_object,
-                                   response.json()['jobIds'][0])
-                    else:
-                        joblist = []
-                        for jobids in response.json()['jobIds']:
-                            joblist.append(Job(self._commcell_object, jobids))
-                        return joblist
+                    return Job(self._commcell_object,
+                               response.json()['jobIds'][0])
                 elif "taskId" in response.json():
-                    return Schedules(self._commcell_object).get(task_id=response.json()['taskId'])
+                    return Schedule(self._commcell_object, schedule_id=response.json()['taskId'])
                 elif "errorCode" in response.json():
                     o_str = 'Initializing backup failed\nError: "{0}"'.format(
                         response.json()['errorMessage']
@@ -1145,8 +1131,7 @@ class Subclient(object):
                      incremental_backup,
                      incremental_level,
                      advanced_options=None,
-                     schedule_pattern=None,
-                     common_backup_options=None):
+                     schedule_pattern=None):
         """Returns the JSON request to pass to the API as per the options selected by the user.
 
             Args:
@@ -1166,11 +1151,6 @@ class Subclient(object):
 
                 advanced_options   (dict)  --  advanced backup options to be included while
                 making the request
-
-                    default: None
-
-                common_backup_options   (dict)  --  advanced job options to be included while
-                                                    making the request.
 
                     default: None
 
@@ -1210,32 +1190,10 @@ class Subclient(object):
                 advanced_options_dict
             )
 
-        advance_job_option_dict = {}
-
-        if common_backup_options:
-            advance_job_option_dict = self._common_backup_options(
-                common_backup_options)
-
-        if advance_job_option_dict:
-            request_json["taskInfo"]["subTasks"][0]["options"]["commonOpts"] = advance_job_option_dict
-
         if schedule_pattern:
             request_json = SchedulePattern().create_schedule(request_json, schedule_pattern)
 
         return request_json
-
-    def _common_backup_options(self, options):
-        """
-         Generates the advanced job options dict
-
-            Args:
-                options     (dict)      --    advanced job options that are to be included
-                                                    in the request
-
-            Returns:
-                (dict)  -           generated advanced job options dict
-        """
-        return options
 
     def _advanced_backup_options(self, options):
         """Generates the advanced backup options dict
@@ -1249,70 +1207,10 @@ class Subclient(object):
         """
         return options
 
-    def update_properties(self, properties_dict):
-        """Updates the subclient properties
-
-            Args:
-                properties_dict (dict)  --  subclient property dict which is to be updated
-
-            Returns:
-                None
-
-            Raises:
-                SDKException:
-                    if failed to add
-
-                    if response is empty
-
-                    if response code is not as expected
-
-        **Note** self.properties can be used to get a deep copy of all the properties, modify the properties which you
-        need to change and use the update_properties method to set the properties
-
-        """
-        request_json = {
-            "subClientProperties": {}
-        }
-
-        request_json['subClientProperties'].update(properties_dict)
-        flag, response = self._cvpysdk_object.make_request('POST', self._SUBCLIENT, request_json)
-        status, _, error_string = self._process_update_response(flag, response)
-        self.refresh()
-
-        if not status:
-            raise SDKException('Subclient', '102', 'Failed to update subclient properties\nError: "{}"'.format(
-                error_string))
-
-    @property
-    def properties(self):
-        """Returns the subclient properties"""
-        return copy.deepcopy(self._subclient_properties)
-
     @property
     def name(self):
         """Returns the Subclient display name"""
         return self._subclient_properties['subClientEntity']['subclientName']
-
-    @property
-    def display_name(self):
-        """Returns the Subclient display name"""
-        return self._subclient_properties.get('subClientEntity', {}).get('displayName')
-
-    @property
-    def subclient_guid(self):
-        """Returns the SubclientGUID"""
-        return self._subclient_properties.get('subClientEntity' , {}).get('subclientGUID')
-
-    @display_name.setter
-    def display_name(self, display_name):
-        """Sets the display name for the subclient
-        Args:
-            display_name    (str)   -- Display name for the subclient
-
-        """
-        update_properties = self.properties
-        update_properties['subClientEntity']['displayName'] = display_name
-        self.update_properties(update_properties)
 
     @property
     def _json_task(self):
@@ -1913,8 +1811,7 @@ class Subclient(object):
             from_time=None,
             to_time=None,
             fs_options=None,
-            schedule_pattern=None,
-            proxy_client=None):
+            schedule_pattern=None):
         """Restores the files/folders specified in the input paths list to the same location.
 
             Args:
@@ -1957,8 +1854,6 @@ class Subclient(object):
                         Please refer schedules.schedulePattern.createSchedule()
                                                                     doc for the types of Jsons
 
-                proxy_client    (str)          -- Proxy client used during FS under NAS operations
-
             Returns:
                 object - instance of the Job class for this restore job if its an immediate Job
                          instance of the Schedule class for this restore job if its a scheduled Job
@@ -1983,8 +1878,7 @@ class Subclient(object):
             from_time=from_time,
             to_time=to_time,
             fs_options=fs_options,
-            schedule_pattern=schedule_pattern,
-            proxy_client=proxy_client
+            schedule_pattern=schedule_pattern
         )
 
     def restore_out_of_place(
@@ -1998,8 +1892,7 @@ class Subclient(object):
             from_time=None,
             to_time=None,
             fs_options=None,
-            schedule_pattern=None,
-            proxy_client=None):
+            schedule_pattern=None):
         """Restores the files/folders specified in the input paths list to the input client,
             at the specified destionation location.
 
@@ -2055,8 +1948,6 @@ class Subclient(object):
                         Please refer schedules.schedulePattern.createSchedule()
                                                                     doc for the types of Jsons
 
-                proxy_client    (str)          -- Proxy client used during FS under NAS operations
-
             Returns:
                 object - instance of the Job class for this restore job if its an immediate Job
                          instance of the Schedule class for this restore job if its a scheduled Job
@@ -2087,8 +1978,7 @@ class Subclient(object):
             from_time=from_time,
             to_time=to_time,
             fs_options=fs_options,
-            schedule_pattern=schedule_pattern,
-            proxy_client=proxy_client
+            schedule_pattern=schedule_pattern
         )
 
     def set_backup_nodes(self, data_access_nodes):
@@ -2263,31 +2153,6 @@ class Subclient(object):
             self._set_subclient_properties(
                 "_commonProperties['storageDevice']['softwareCompression']", value
             )
-        else:
-            raise SDKException('Subclient', '101')
-
-    @property
-    def network_agent(self):
-        """Returns the value of network agents setting on the Subclient."""
-        return self._commonProperties['storageDevice']['networkAgents']
-
-    @network_agent.setter
-    def network_agent(self, value):
-        """Sets the network agents of the subclient as the value provided as input.
-
-            Args:
-                value   (int)   --  network agents value
-
-            Raises:
-                SDKException:
-                    if failed to update network agents of subclient
-
-                    if the type of value input is not integer
-
-        """
-
-        if isinstance(value, int):
-            self._set_subclient_properties("_commonProperties['storageDevice']['networkAgents']", value)
         else:
             raise SDKException('Subclient', '101')
 

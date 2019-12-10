@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """File for operating on a Virtual Server Instance.
@@ -37,49 +27,15 @@ VirtualServerInstance:
 
     co_ordinator                    --  getter
 
-To add a new Virtual Instance, create a class in a new module under virtualserver sub package
-
-
-The new module which is created has to named in the following manner:
-1. Name the module with the name of the Virtual Server without special characters
-2.Spaces alone must be replaced with underscores('_')
-
-For eg:
-
-    The Virtual Server 'Red Hat Virtualization' is named as 'red_hat_virtualization.py'
-
-    The Virtual Server 'Hyper-V' is named as 'hyperv.py'
 """
 
 from __future__ import unicode_literals
-
-import re
-from importlib import import_module
-from inspect import getmembers, isclass, isabstract
-
 from past.builtins import basestring
 
 from ..instance import Instance
+from ..client import Client
 from ..exception import SDKException
-
-VSINSTANCE_TYPE = {
-    101: "vmware",
-    102: "hyperv",
-    301: "amazon",
-    401: "azure",
-    402: "azure_resource_manager",
-    403: "azure_stack",
-    501: "red_hat_virtualization",
-    601: "nutanix_ahv",
-    701: "oraclavm",
-    801: "fusioncompute",
-    901: "openstack",
-    1101: "oracle_cloud",
-    1102: "oracle_cloud_infrastructure",
-    1301: "google_cloud_platform",
-    1401: "alibaba_cloud",
-    1503: "vcloud_director"
-}
+from .. import constants
 
 
 class VirtualServerInstance(Instance):
@@ -88,21 +44,62 @@ class VirtualServerInstance(Instance):
     def __new__(cls, agent_object, instance_name, instance_id=None):
         """Decides which instance object needs to be created"""
 
-        try:
-            instance_name = VSINSTANCE_TYPE[agent_object.instances._vs_instance_type_dict[instance_id]]
-        except KeyError:
-            instance_name = re.sub('[^A-Za-z0-9_]+', '', instance_name.replace(" ", "_"))
+        hv_type = constants.HypervisorType
+        if instance_name == hv_type.VIRTUAL_CENTER.value.lower():
+            from .virtualserver.VMwareInstance import VMwareInstance
+            return object.__new__(VMwareInstance)
 
-        try:
-            instance_module = import_module("cvpysdk.instances.virtualserver.{}".format(instance_name))
-        except ImportError:
-            instance_module = import_module("cvpysdk.instances.virtualserver.null")
+        elif instance_name == hv_type.MS_VIRTUAL_SERVER.value.lower():
+            from .virtualserver.hypervinstance import HyperVInstance
+            return object.__new__(HyperVInstance)
 
-        classes = getmembers(instance_module, lambda m: isclass(m) and not isabstract(m))
+        elif instance_name == hv_type.AZURE_V2.value.lower():
+            from .virtualserver.azureRMinstance import AzureRMInstance
+            return object.__new__(AzureRMInstance)
 
-        for name, _class in classes:
-            if issubclass(_class, VirtualServerInstance) and _class.__module__.rsplit(".", 1)[-1] == instance_name:
-                return object.__new__(_class)
+        elif instance_name == hv_type.FUSION_COMPUTE.value.lower():
+            from .virtualserver.fusioncomputeinstance import FusionComputeInstance
+            return object.__new__(FusionComputeInstance)
+
+        elif instance_name == hv_type.ORACLE_VM.value.lower():
+            from .virtualserver.oraclevminstance import OracleVMInstance
+            return object.__new__(OracleVMInstance)
+
+        elif instance_name == hv_type.ALIBABA_CLOUD.value.lower():
+            from .virtualserver.alibabacloudinstance import AlibabaCloudInstance
+            return object.__new__(AlibabaCloudInstance)
+
+        elif instance_name == hv_type.ORACLE_CLOUD.value.lower():
+            from .virtualserver.oraclecloudinstance import OracleCloudInstance
+            return object.__new__(OracleCloudInstance)
+
+        elif instance_name == hv_type.OPENSTACK.value.lower():
+            from .virtualserver.openstackinstance import OpenStackInstance
+            return object.__new__(OpenStackInstance)
+
+        elif instance_name == hv_type.GOOGLE_CLOUD.value.lower():
+            from .virtualserver.googlecloudinstance import GoogleCloudInstance
+            return object.__new__(GoogleCloudInstance)
+
+        elif instance_name == hv_type.Azure_Stack.value.lower():
+            from .virtualserver.azurestackinstance import AzureStackInstance
+            return object.__new__(AzureStackInstance)
+
+        elif instance_name == hv_type.Rhev.value.lower():
+            from .virtualserver.rhevinstance import RhevInstance
+            return object.__new__(RhevInstance)
+
+        elif instance_name == hv_type.AMAZON_AWS.value.lower():
+            from .virtualserver.amazoninstance import AmazonInstance
+            return object.__new__(AmazonInstance)
+
+        elif instance_name == hv_type.VCLOUD.value.lower():
+            from .virtualserver.VCloudInstance import VcloudInstance
+            return object.__new__(VcloudInstance)
+
+        elif instance_name == hv_type.Nutanix.value.lower():
+            from .virtualserver.nutanixinstance import nutanixinstance
+            return object.__new__(nutanixinstance)
 
     def _get_instance_properties(self):
         """Gets the properties of this instance.
@@ -121,10 +118,12 @@ class VirtualServerInstance(Instance):
             self._vsinstancetype = self._virtualserverinstance['vsInstanceType']
             self._asscociatedclients = self._virtualserverinstance['associatedClients']
 
+
     @property
     def server_name(self):
         """returns the PseudoClient Name of the associated isntance"""
         return self._agent_object._client_object.client_name
+
 
     @property
     def associated_clients(self):
@@ -165,7 +164,7 @@ class VirtualServerInstance(Instance):
 
         client_json_list = []
 
-        associated_clients = {"memberServers": client_json_list}
+        associated_clients = {"memberServers":client_json_list}
 
         for client_name in clients_list:
             client_json = {
@@ -200,6 +199,7 @@ class VirtualServerInstance(Instance):
         associated_clients = {"memberServers": client_json_list}
         self._set_instance_properties("_virtualserverinstance['associatedClients']",
                                       associated_clients)
+
 
     @property
     def co_ordinator(self):

@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """Main file for performing schedule policy related operations on the commcell.
@@ -87,10 +77,6 @@ SchedulePolicy:
     _process_schedule_policy_update_response -- processes the response received post update request
 
     refresh                         -- Refresh the properties of the Schedule Policy
-
-    enable                          -- Enables a schedule policy
-
-    disable                         -- Disables a schedule policy
 
 
 
@@ -280,18 +266,10 @@ class SchedulePolicies:
             "subTask": sub_task,
             "options": schedule_options
         }
-
-        freq_type = schedule_dict.get('pattern', {}).get('freq_type', 'daily')
-
-        try:
-            schedule_dict["pattern"]["freq_type"] = freq_type
-        except KeyError:
-            schedule_dict["pattern"] = {"freq_type": freq_type}
-
         task_json = SchedulePattern().create_schedule({'taskInfo':
                                                            {'subTasks': [sub_task]
                                                             }
-                                                       }, schedule_dict.get('pattern'))
+                                                       }, schedule_dict.get('pattern', {'freq_type': 'daily'}))
         return task_json.get('taskInfo').get('subTasks')[0]
 
 
@@ -1019,83 +997,6 @@ class SchedulePolicy:
 
         o_str = 'Failed to update properties of Schedule Policy\nError: "{0}"'
         raise SDKException('Schedules', '102', o_str.format(output[2]))
-
-    def enable(self):
-        """Enable a schedule policy.
-
-                    Raises:
-                        SDKException:
-                            if failed to enable schedule policy
-
-                            if response is empty
-
-                            if response is not success
-                """
-        enable_request = self._commcell_object._services['ENABLE_SCHEDULE']
-        request_text = "taskId={0}".format(self.schedule_policy_id)
-
-        flag, response = self._commcell_object._cvpysdk_object.make_request(
-            'POST', enable_request, request_text)
-
-        if flag:
-            if response.json():
-                error_code = str(response.json()['errorCode'])
-
-                if error_code == "0":
-                    return
-                else:
-                    error_message = 'Failed to enable Schedule Policy'
-
-                    if 'errorMessage' in response.json():
-                        error_message = "{0}\nError: {1}".format(error_message, response.json()['errorMessage'])
-
-                    raise SDKException('Schedules', '102', error_message)
-
-            else:
-                raise SDKException('Response', '102')
-
-        response_string = self._commcell_object._update_response_(
-            response.text)
-        raise SDKException('Response', '101', response_string)
-
-    def disable(self):
-        """Disable a Schedule Policy.
-
-            Raises:
-                SDKException:
-                    if failed to disable Schedule Policy
-
-                    if response is empty
-
-                    if response is not success
-        """
-        disable_request = self._commcell_object._services['DISABLE_SCHEDULE']
-
-        request_text = "taskId={0}".format(self.schedule_policy_id)
-
-        flag, response = self._commcell_object._cvpysdk_object.make_request(
-            'POST', disable_request, request_text)
-
-        if flag:
-            if response.json():
-                error_code = str(response.json()['errorCode'])
-
-                if error_code == "0":
-                    return
-                else:
-                    error_message = 'Failed to disable Schedule Policy'
-
-                    if 'errorMessage' in response.json():
-                        error_message = "{0}\nError: {1}".format(error_message, response.json()['errorMessage'])
-
-                    raise SDKException('Schedules', '102', error_message)
-
-            else:
-                raise SDKException('Response', '102')
-
-        response_string = self._commcell_object._update_response_(
-            response.text)
-        raise SDKException('Response', '101', response_string)
 
     def _process_schedule_policy_update_response(self, flag, response):
         """

@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """Service URLs for REST API operations.
@@ -53,12 +43,11 @@ SERVICES_DICT_TEMPLATE = {
     'CLIENT': '{0}Client/%s',
     'GET_ALL_CLIENTS_PLUS_HIDDEN': '{0}Client?hiddenclients=true',
     'GET_ALL_PSEUDO_CLIENTS': '{0}Client?PseudoClientType',
-    'CHECK_READINESS': '{0}Client/%s/CheckReadiness?network=%s&resourceCapacity=%s'
-                       '&NeedXmlResp=true&includeDisabledClients=%s',
+    'CHECK_READINESS': '{0}Client/%s/CheckReadiness?network=true&resourceCapacity=false',
 
     'GET_ALL_AGENTS': '{0}Agent?clientId=%s',
     'AGENT': '{0}Agent',
-    'GET_AGENT': '{0}Agent?clientId=%s&applicationId=%s&propertyLevel=30',
+    'GET_AGENT': '{0}Agent?clientId=%s&applicationId=%s',
 
     'GET_ALL_BACKUPSETS': '{0}Backupset?clientId=%s&propertyLevel=10',
     'BACKUPSET': '{0}Backupset/%s',
@@ -78,9 +67,7 @@ SERVICES_DICT_TEMPLATE = {
     'SUSPEND_JOB': '{0}Job/%s/action/pause',
     'RESUME_JOB': '{0}Job/%s/action/resume',
     'KILL_JOB': '{0}Job/%s/action/kill',
-    'RESUBMIT_JOB': '{0}Job/%s/action/Resubmit',
     'ALL_JOBS': '{0}Jobs',
-    'JOB_MANAGEMENT_SETTINGS': '{0}CommServ/JobManagementSetting',
 
     'GET_MEDIA_AGENTS': '{0}V2/MediaAgents',
     'LIBRARY': '{0}Library',
@@ -98,24 +85,18 @@ SERVICES_DICT_TEMPLATE = {
 
     'GET_ALL_ALERTS': '{0}AlertRule',
     'ALERT': '{0}AlertRule/%s',
-    'CREATE_BLR_PAIR': '{0}Replications/Groups',
-    'DELETE_BLR_PAIR': '{0}Replications/Monitors/continuous/%s',
-    'GRANULAR_BLR_POINTS': '{0}/Replications/Monitors/continuous/VmScale?destProxyClientId=%s&subclientId=%s&vmUuid=%s',
-
     'MODIFY_ALERT': '{0}AlertRule/%s/Action/Modify',
     'GET_ALL_CONSOLE_ALERTS': '{0}Alert?pageNo=%s&pageCount=%s',
     'ENABLE_ALERT_NOTIFICATION': '{0}AlertRule/%s/notificationType/%s/Action/Enable',
     'DISABLE_ALERT_NOTIFICATION': '{0}AlertRule/%s/notificationType/%s/Action/Disable',
     'ENABLE_ALERT': '{0}AlertRule/%s/Action/Enable',
     'DISABLE_ALERT': '{0}AlertRule/%s/Action/Disable',
-    'EMAIL_SERVER': '{0}EmailServer',
 
     'CLIENT_SCHEDULES': '{0}Schedules?clientId=%s',
     'AGENT_SCHEDULES': '{0}Schedules?clientId=%s&apptypeId=%s',
     'BACKUPSET_SCHEDULES': '{0}Schedules?clientId=%s&apptypeId=%s&backupsetId=%s',
     'SUBCLIENT_SCHEDULES': ('{0}Schedules?clientId=%s&apptypeId=%s&'
                             'backupsetId=%s&subclientId=%s'),
-    'WORKFLOW_SCHEDULES': '{0}Schedules?workflowId=%s',
     'REPORT_SCHEDULES': '{0}/ScheduleReports',
     'OPTYPE_SCHEDULES': '{0}/Schedules?operationType=%s',
     'COMMCELL_SCHEDULES': '{0}/Schedules',
@@ -139,7 +120,6 @@ SERVICES_DICT_TEMPLATE = {
     'DEPLOY_WORKFLOW': '{0}Workflow/%s/action/deploy',
     'EXECUTE_WORKFLOW': '{0}wapi/%s',
     'GET_WORKFLOW': '{0}Workflow/%s',
-    'GET_WORKFLOW_DEFINITION': '{0}Workflow/%s/definition',
     'GET_INTERACTIONS': '{0}WorkflowInteractions',
     'GET_INTERACTION': '{0}Workflow/Interaction/%s',
 
@@ -176,8 +156,6 @@ SERVICES_DICT_TEMPLATE = {
     'DELETE_DATASOURCE': '{0}dcube/deleteDataSource/%s',
     'CREATE_DATASOURCE': '{0}dcube/createDataSource',
     'DATACUBE_IMPORT_DATA': '{0}dcube/post/%s/%s',
-    'START_JOB_DATASOURCE': '{0}dcube/startjob/%s',
-    'GET_STATUS_DATASOURCE': '{0}dcube/GetStatus/%s',
 
     'GLOBAL_FILTER': '{0}GlobalFilter',
     'RESTORE_OPTIONS': '{0}Restore/GetDestinationsToRestore?clientId=0&appId=%s&flag=8',
@@ -206,7 +184,7 @@ SERVICES_DICT_TEMPLATE = {
     'ALL_VM_ALLOCATION_POLICY': '{0}VMAllocationPolicy?hiddenpolicies=true',
     'GET_VM_ALLOCATION_POLICY': '{0}VMAllocationPolicy/%s',
     'PROTECTED_VMS': "{0}VM?propertyLevel=AllProperties&status=1&fromTime=%s&toTime=%s",
-    'CONTINUOUS_REPLICATION_MONITOR': "{0}Replications/Monitors/continuous",
+
     'USERS': '{0}User',
     'USER': '{0}User/%s?Level=50',
     'DELETE_USER': '{0}User/%s?newUserId=%s&newUserGroupId=%s',
@@ -218,7 +196,7 @@ SERVICES_DICT_TEMPLATE = {
     'ALL_CREDENTIALS': '{0}/CommCell/Credentials?propertyLevel=30',
     'ONE_CREDENTIAL': '{0}/CommCell/Credentials/%s?propertyLevel=30',
     'CREDENTIAL':   '{0}/Commcell/Credentials',
-    'DELETE_RECORD': '{0}/Commcell/Credentials/action/delete',
+    'DELETE_RECORD':'{0}/Commcell/Credentials/action/delete',
 
     'GET_SECURITY_ROLES': '{0}Security/Roles',
     'SECURITY_ASSOCIATION': '{0}Security',
@@ -260,7 +238,6 @@ SERVICES_DICT_TEMPLATE = {
     'DR_GROUP_JOB_STATS': '{0}DRGroups/JobStats?jobId=%s&drGroupId=%s&replicationId=%s&clientId=0',
     'REVERSE_REPLICATION_TASK': '{0}Replications/Monitors/streaming/Operation',
     'REPLICATION_MONITOR': '{0}Replications/Monitors/streaming?subclientId=0',
-    'RPSTORE': '{0}Replications/RPStore',
 
     'ADD_EXCHANGE': '{0}pseudoClient',
     'CREATE_CONFIGURATION_POLICIES': '{0}ConfigurationPolicies',
@@ -302,7 +279,6 @@ SERVICES_DICT_TEMPLATE = {
     'CERTIFICATES': '{0}CommServ/Certificates',
 
     'GET_DAG_MEMBER_SERVERS': '{0}Exchange/DAG/%s/PseudoClientInfo',  # only for Exchange DAG
-    'GET_RECOVERY_POINTS': '{0}Exchange/DAG/%s/RecoveryPoints?instanceId=%s&backupSetId=%s&subClientId=%s&appId=%s',
 
     'CASEDEFINITION': '{0}EDiscoveryClients/CaseDefinitions',
 
@@ -315,17 +291,8 @@ SERVICES_DICT_TEMPLATE = {
     'POLL_REQUEST_ROUTER': '{0}/CommcellRedirect/RedirectListforUser?user=%s',
 
     'GET_ALL_LIVE_SYNC_PAIRS': '{0}Replications/Monitors/streaming?subclientId=%s',
-    'GET_ALL_LIVE_SYNC_VM_PAIRS': '{0}Replications/Monitors/streaming?subclientId=%s&taskId=%s',
-    'GET_LIVE_SYNC_VM_PAIR': '{0}Replications/Monitors/streaming?subclientId=%s&replicationPairId=%s',
+    'GET_LIVE_SYNC_PAIR': '{0}Replications/Monitors/streaming?subclientId=%s&replicationPairId=%s'
 
-    'BACKUP_NETWORK_PAIRS': '{0}CommServ/DataInterfacePairs?ClientId=%s',
-    'BACKUP_NETWORK_PAIR': '{0}CommServ/DataInterfacePairs',
-
-    'GET_ALL_RECOVERY_TARGETS':
-        '{0}/VMAllocationPolicy?showResourceGroupPolicy=true&showNonResourceGroupPolicy=false&deep=true',
-    'GET_RECOVERY_TARGET': '{0}/VMAllocationPolicy/%s',
-    
-    'RETIRE': '{0}Client/%s/Retire'
 }
 
 

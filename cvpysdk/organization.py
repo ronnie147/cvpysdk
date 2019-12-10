@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """File for doing operations on an organization.
@@ -65,8 +55,6 @@ Organizations
 
     delete()                    --  deletes an organization from the commcell
 
-    dissociate_plans()          -- disassociates plans from the organization
-
     refresh()                   --  refresh the list of organizations associated with the commcell
 
 Organizations Attributes
@@ -98,9 +86,7 @@ Organization
 
     disable_auth_code()         --  disable Auth Code generation for the organization
 
-    add_users_as_operator()     --  assigns users as operator
-
-    add_user_groups_as_operator()   -- assigns user groups as operator
+    add_users_as_operator()     -- assigns users as operators
 
     activate()                  --  To activate the organization
 
@@ -156,7 +142,6 @@ from past.builtins import basestring
 from .exception import SDKException
 
 from .security.user import User
-from .security.usergroup import UserGroup
 
 
 class Organizations:
@@ -611,7 +596,7 @@ class Organization:
                 organization_properties = self._organization_info['organizationProperties']
 
                 self._description = organization['description']
-                self._email_domain_names = organization.get('emailDomainNames')
+                self._email_domain_names = organization['emailDomainNames']
                 self._domain_name = organization['shortName']['domainName']
 
                 self._is_auth_code_enabled = organization_properties['enableAuthCodeGen']
@@ -639,6 +624,7 @@ class Organization:
 
                 self._server_count = organization_properties['serverCount']
 
+
                 return self._organization_info
             else:
                 raise SDKException('Response', '102')
@@ -646,11 +632,11 @@ class Organization:
             response_string = self._update_response_(response.text)
             raise SDKException('Response', '101', response_string)
 
-    def _update_properties(self, update_plan_details=False):
+    def _update_properties(self):
         """Executes the request on the server to update the properties of the organization.
 
             Args:
-                update_plan_details -- to update the plan details associated with company
+                None
 
             Returns:
                 None
@@ -670,9 +656,7 @@ class Organization:
             }
         }
 
-        if update_plan_details:
-            request_json['organizationInfo']['planDetailsOperationType'] = self._properties.get(
-                'planDetailsOperationType')
+        if self._properties.get('planDetails'):
             request_json['organizationInfo']['planDetails'] = self._properties.get('planDetails')
 
         __, response = self._cvpysdk_object.make_request(
@@ -790,6 +774,7 @@ class Organization:
                 'subtype': temp_plan.subtype
             }]
 
+
             self._update_properties_json({'defaultPlans': temp})
             self._update_properties()
 
@@ -810,15 +795,7 @@ class Organization:
 
     @plans.setter
     def plans(self, value):
-        """Update the list of plans associated with the Organization.
-
-            Args:
-                value            (list)   --  list of plans
-
-            Returns:
-                None
-
-        """
+        """Update the list of plans associated with the Organization."""
         if not isinstance(value, list):
             raise SDKException('Organization', '101')
 
@@ -843,6 +820,7 @@ class Organization:
             }
 
             if plan_dict.get('job_start_time'):
+
                 temp['jobStartTime'] = plan_dict['job_start_time']
                 temp['isStartTimeOverridden'] = True
 
@@ -852,44 +830,8 @@ class Organization:
             del temp_plan
 
         self._properties['planDetails'] = plans_list
-        self._properties['planDetailsOperationType'] = 1
-        self._update_properties(update_plan_details=True)
-
-    def dissociate_plans(self, value):
-        """disassociates plans from the organization
-
-            Args:
-                value            (list)   --  list of plans
-
-            Returns:
-                None
-        """
-
-        if not isinstance(value, list):
-            raise SDKException('Organization', '101')
-
-        plans_list = []
-
-        for plan in value:
-            if not self._commcell_object.plans.has_plan(plan):
-                raise SDKException(
-                    'Organization', '102', 'Plan: "{0}" does not exist on Commcell'.format(plan)
-                )
-            else:
-                temp_plan = self._commcell_object.plans.get(plan)
-                temp = {
-                    'plan': {
-                        'planId': int(temp_plan.plan_id)
-                    }
-                }
-                plans_list.append(temp)
-
-                del temp
-                del temp_plan
-
-        self._properties['planDetails'] = plans_list
-        self._properties['planDetailsOperationType'] = 3
-        self._update_properties(update_plan_details=True)
+        self._properties['planDetailsOperationType']= 1
+        self._update_properties()
 
     def refresh(self):
         """Refresh the properties of the Organization."""
@@ -957,7 +899,6 @@ class Organization:
 
                     if response is empty
 
-
                     if response is not success
 
         """
@@ -973,38 +914,6 @@ class Organization:
         tenant_operators = self._organization_info.get('organizationProperties', {}).get('operators', [])
         return [role['user']['userName'] for role in tenant_operators]
 
-    def add_user_groups_as_operator(self, user_group_list, request_type):
-        """Update the local user_group as tenant operator of the company
-
-        Args:
-            user_group_list		(list)  -- user group list
-
-            request_type        (str)   --  decides whether to UPDATE, DELETE or OVERWRITE user_group
-            security association
-
-        """
-        update_operator_request_type = {
-            "NONE": 0,
-            "OVERWRITE": 1,
-            "UPDATE": 2,
-            "DELETE": 3
-        }
-        user_group_list_object = []
-        for user_group in user_group_list:
-            if not isinstance(user_group, UserGroup):
-                user_group = self._commcell_object.user_groups.get(user_group)
-            user_group_list_object.append(user_group)
-        request_operator = {
-            'operators': [{
-                'userGroup': {
-                    'userGroupName': user_group.name,
-                }
-            } for user_group in user_group_list_object],
-            'operatorsOperationType': update_operator_request_type[request_type.upper()]
-        }
-        self._update_properties_json(request_operator)
-        self._update_properties()
-
     def add_users_as_operator(self, user_list, request_type):
         """Update the local user as tenant operator of the company
 
@@ -1015,7 +924,7 @@ class Organization:
                                        OVERWRITE user security association
 
         """
-        update_operator_request_type = {
+        update_opertaor_request_type = {
             "NONE": 0,
             "OVERWRITE": 1,
             "UPDATE": 2,
@@ -1025,7 +934,7 @@ class Organization:
         for user in user_list:
             if not isinstance(user, User):
                 user = self._commcell_object.users.get(user)
-            user_list_object.append(user)
+                user_list_object.append(user)
 
         request_operator = {
             'operators': [{
@@ -1033,7 +942,7 @@ class Organization:
                     'userName': user.user_name,
                 }
             } for user in user_list_object],
-            'operatorsOperationType': update_operator_request_type[request_type.upper()]
+            'operatorsOperationType': update_opertaor_request_type[request_type.upper()]
         }
 
         self._update_properties_json(request_operator)
@@ -1131,11 +1040,11 @@ class Organization:
 
         """
         request_json = {
-            "deactivateOptions": {
-                "disableBackup": disable_backup,
-                "disableRestore": disable_restore,
-                "disableLogin": disable_login
-            }
+                        "deactivateOptions": {
+                            "disableBackup": disable_backup,
+                            "disableRestore": disable_restore,
+                            "disableLogin": disable_login
+                        }
         }
 
         flag, response = self._cvpysdk_object.make_request(

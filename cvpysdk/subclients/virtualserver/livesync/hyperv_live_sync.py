@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """File for configuring and monitoring live sync on the Hyper-V subclient.
@@ -41,10 +31,8 @@ class HyperVLiveSync(VsaLiveSync):
                             schedule_name=None,
                             destination_client=None,
                             proxy_client=None,
-                            copy_precedence=0,
                             vm_to_restore=None,
                             destination_path=None,
-                            destination_network=None,
                             power_on=True,
                             overwrite=False,
                             distribute_vm_workload=None,
@@ -62,14 +50,9 @@ class HyperVLiveSync(VsaLiveSync):
 
             proxy_client                (str)   -- Name of the proxy client to be used
 
-            copy_precedence             (int)   -- Copy id from which restore needs to be performed
-                                                    default: 0
-
             vm_to_restore               (list)  -- VM's to be restored
 
             destination_path            (str)   -- Full path of the restore location on client
-
-            destination_network         (str)   -- Network card name on the destination machine
 
             power_on                    (bool)  -- To validate destination VM power on and off
                                                     default: True
@@ -137,11 +120,8 @@ class HyperVLiveSync(VsaLiveSync):
             raise SDKException('Subclient', '101')
 
         if not restored_vm_name and isinstance(vm_to_restore, basestring):
-            restored_vm_name = "LiveSync_"
+            restored_vm_name = "Delete" + vm_to_restore
         restore_option['restore_new_name'] = restored_vm_name
-
-        if copy_precedence:
-            restore_option["copy_precedence_applicable"] = True
 
         if vm_to_restore:
             vm_to_restore = [vm_to_restore]
@@ -160,14 +140,13 @@ class HyperVLiveSync(VsaLiveSync):
             unconditional_overwrite=overwrite,
             power_on=power_on,
             distribute_vm_workload=distribute_vm_workload,
-            copy_precedence=copy_precedence,
+            copy_precedence=0,
             volume_level_restore=1,
             vcenter_client=destination_client,
             client_name=proxy_client,
             esx_server=proxy_client,
             esx_host=proxy_client,
             datastore=destination_path,
-            destination_network=destination_network,
             in_place=False
         )
 

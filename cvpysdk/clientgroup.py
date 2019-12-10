@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """Main file for performing client group operations.
@@ -78,7 +68,7 @@ ClientGroup:
     _request_json_()               -- returns the appropriate JSON to pass for enabling/disabling
     an activity
 
-    _process_update_request()      -- processes the clientgroup update API call
+    _process_request_()            -- processes the response received for the CG properties request
 
     _update()                      -- updates the client group properties
 
@@ -116,9 +106,6 @@ ClientGroup:
 
     push_servicepack_and_hotfixes() -- triggers installation of service pack and hotfixes
 
-    update_properties()             -- to update the client group properties
-
-    add_additional_setting()        -- adds registry key to client group property
 
 """
 
@@ -126,7 +113,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import time
-import copy
 
 from past.builtins import basestring
 
@@ -487,13 +473,13 @@ class ClientGroups(object):
             }
 
         rule_mk = {
-            "rule": {
-                "filterID": filter_dict[filter_condition],
-                "secValue": filter_value,
-                "propID": prop_id_dict[filter_rule],
-                "propType": ptype_dict[filter_rule],
-                "value": value
-            }
+                    "rule": {
+                        "filterID": filter_dict[filter_condition],
+                        "secValue": filter_value,
+                        "propID": prop_id_dict[filter_rule],
+                        "propType": ptype_dict[filter_rule],
+                        "value": value
+                    }
             }
 
         return rule_mk
@@ -794,16 +780,6 @@ class ClientGroup(object):
 
         self._CLIENTGROUP = self._commcell_object._services['CLIENTGROUP'] % (self.clientgroup_id)
 
-        self._cvpysdk_object = commcell_object._cvpysdk_object
-        self._services = commcell_object._services
-        self._update_response_ = commcell_object._update_response_
-
-        self._properties = None
-        self._description = None
-        self._is_backup_enabled = None
-        self._is_restore_enabled = None
-        self._is_data_aging_enabled = None
-
         self.refresh()
 
     def __repr__(self):
@@ -889,18 +865,12 @@ class ClientGroup(object):
                     elif control_options['activityType'] == 16:
                         self._is_data_aging_enabled = control_options['enableActivityType']
 
-    def _request_json_(self, option, enable=True, enable_time=None, **kwargs):
+    def _request_json_(self, option, enable=True, enable_time=None):
         """Returns the JSON request to pass to the API as per the options selected by the user.
 
             Args:
                 option (str)  --  string option for which to run the API for
                     e.g.; Backup / Restore / Data Aging
-
-                **kwargs (dict)  -- dict of keyword arguments as follows
-
-                    timezone    (str)   -- timezone to be used of the operation
-
-                        **Note** make use of TIMEZONES dict in constants.py to pass timezone
 
             Returns:
                 dict - JSON request to pass to the API
@@ -936,7 +906,7 @@ class ClientGroup(object):
                         "enableAfterADelay": True,
                         "enableActivityType": False,
                         "dateTime": {
-                            "TimeZoneName": kwargs.get("timezone", "(UTC) Coordinated Universal Time"),
+                            "TimeZoneName": "(UTC) Coordinated Universal Time",
                             "timeValue": enable_time
                         }
                     }]
@@ -952,8 +922,8 @@ class ClientGroup(object):
         else:
             return request_json1
 
-    def _process_update_request(self, request_json):
-        """Runs the Clientgroup update API
+    def _process_request_(self, request_json):
+        """Runs the Clientgroup update API to enable/disable backup, restore or data aging flags
 
             Args:
                 request_json    (dict)  -- request json sent as payload
@@ -962,16 +932,15 @@ class ClientGroup(object):
                 (str, str):
                     str  -  error code received in the response
 
-                    str  -  error message received in the response
+                    str  -  error message received
 
             Raises:
                 SDKException:
                     if response is empty
 
                     if response is not success
-
         """
-        flag, response = self._cvpysdk_object.make_request(
+        flag, response = self._commcell_object._cvpysdk_object.make_request(
             'POST', self._CLIENTGROUP, request_json
         )
 
@@ -984,11 +953,13 @@ class ClientGroup(object):
                 else:
                     error_message = ""
 
-                self.refresh()
-                return error_code, error_message
-            raise SDKException('Response', '102')
-        response_string = self._update_response_(response.text)
-        raise SDKException('Response', '101', response_string)
+                return (error_code, error_message)
+
+            else:
+                raise SDKException('Response', '102')
+        else:
+            response_string = self._commcell_object._update_response_(response.text)
+            raise SDKException('Response', '101', response_string)
 
     def _update(
             self,
@@ -1129,11 +1100,6 @@ class ClientGroup(object):
             )
 
     @property
-    def properties(self):
-        """Returns the client group properties"""
-        return copy.deepcopy(self._properties)
-
-    @property
     def name(self):
         """Returns the client group display name"""
         return self._properties['clientGroup']['clientGroupName']
@@ -1181,6 +1147,7 @@ class ClientGroup(object):
 
         return self._networkprop
 
+
     @property
     def network_throttle(self):
         """Returns the object of NetworkThrottle class"""
@@ -1188,6 +1155,7 @@ class ClientGroup(object):
             self._network_throttle = NetworkThrottle(self)
 
         return self._network_throttle
+
 
     @property
     def client_group_filter(self):
@@ -1226,8 +1194,9 @@ class ClientGroup(object):
             var['globalFilters']['opType'] = 1
         request_json['clientGroupOperationType'] = 2
 
-        self._process_update_request(request_json)
+        self._process_request_(request_json)
         self.refresh()
+
 
     def enable_backup(self):
         """Enable Backup for this ClientGroup.
@@ -1238,7 +1207,7 @@ class ClientGroup(object):
         """
         request_json = self._request_json_('Backup')
 
-        error_code, error_message = self._process_update_request(request_json)
+        error_code, error_message = self._process_request_(request_json)
 
         if error_code == '0':
             self._is_backup_enabled = True
@@ -1251,18 +1220,12 @@ class ClientGroup(object):
 
             raise SDKException('ClientGroup', '102', o_str)
 
-    def enable_backup_at_time(self, enable_time, **kwargs):
+    def enable_backup_at_time(self, enable_time):
         """Disables Backup if not already disabled, and enables at the time specified.
 
             Args:
                 enable_time (str)  --  UTC time to enable the backup at, in 24 Hour format
                     format: YYYY-MM-DD HH:mm:ss
-
-                **kwargs (dict)  -- dict of keyword arguments as follows
-
-                    timezone    (str)   -- timezone to be used of the operation
-
-                        **Note** make use of TIMEZONES dict in constants.py to pass timezone
 
             Raises:
                 SDKException:
@@ -1279,9 +1242,9 @@ class ClientGroup(object):
         except ValueError:
             raise SDKException('ClientGroup', '104')
 
-        request_json = self._request_json_('Backup', False, enable_time, **kwargs)
+        request_json = self._request_json_('Backup', False, enable_time)
 
-        error_code, error_message = self._process_update_request(request_json)
+        error_code, error_message = self._process_request_(request_json)
 
         if error_code == '0':
             return
@@ -1302,7 +1265,7 @@ class ClientGroup(object):
         """
         request_json = self._request_json_('Backup', False)
 
-        error_code, error_message = self._process_update_request(request_json)
+        error_code, error_message = self._process_request_(request_json)
 
         if error_code == '0':
             self._is_backup_enabled = False
@@ -1324,7 +1287,7 @@ class ClientGroup(object):
         """
         request_json = self._request_json_('Restore')
 
-        error_code, error_message = self._process_update_request(request_json)
+        error_code, error_message = self._process_request_(request_json)
 
         if error_code == '0':
             self._is_restore_enabled = True
@@ -1337,18 +1300,12 @@ class ClientGroup(object):
 
             raise SDKException('ClientGroup', '102', o_str)
 
-    def enable_restore_at_time(self, enable_time, **kwargs):
+    def enable_restore_at_time(self, enable_time):
         """Disables restore if not already disabled, and enables at the time specified.
 
             Args:
                 enable_time (str)  --  UTC time to enable the backup at, in 24 Hour format
                     format: YYYY-MM-DD HH:mm:ss
-
-                **kwargs (dict)  -- dict of keyword arguments as follows
-
-                    timezone    (str)   -- timezone to be used of the operation
-
-                        **Note** make use of TIMEZONES dict in constants.py to pass timezone
 
             Raises:
                 SDKException:
@@ -1365,9 +1322,9 @@ class ClientGroup(object):
         except ValueError:
             raise SDKException('ClientGroup', '104')
 
-        request_json = self._request_json_('Restore', False, enable_time, **kwargs)
+        request_json = self._request_json_('Restore', False, enable_time)
 
-        error_code, error_message = self._process_update_request(request_json)
+        error_code, error_message = self._process_request_(request_json)
 
         if error_code == '0':
             return
@@ -1388,7 +1345,7 @@ class ClientGroup(object):
         """
         request_json = self._request_json_('Restore', False)
 
-        error_code, error_message = self._process_update_request(request_json)
+        error_code, error_message = self._process_request_(request_json)
 
         if error_code == '0':
             self._is_restore_enabled = False
@@ -1410,7 +1367,7 @@ class ClientGroup(object):
         """
         request_json = self._request_json_('Data Aging')
 
-        error_code, error_message = self._process_update_request(request_json)
+        error_code, error_message = self._process_request_(request_json)
 
         if error_code == '0':
             self._is_data_aging_enabled = True
@@ -1423,18 +1380,12 @@ class ClientGroup(object):
 
             raise SDKException('ClientGroup', '102', o_str)
 
-    def enable_data_aging_at_time(self, enable_time, **kwargs):
+    def enable_data_aging_at_time(self, enable_time):
         """Disables Data Aging if not already disabled, and enables at the time specified.
 
             Args:
                 enable_time (str)  --  UTC time to enable the backup at, in 24 Hour format
                     format: YYYY-MM-DD HH:mm:ss
-
-                **kwargs (dict)  -- dict of keyword arguments as follows
-
-                    timezone    (str)   -- timezone to be used of the operation
-
-                        **Note** make use of TIMEZONES dict in constants.py to pass timezone
 
             Raises:
                 SDKException:
@@ -1451,9 +1402,9 @@ class ClientGroup(object):
         except ValueError:
             raise SDKException('ClientGroup', '104')
 
-        request_json = self._request_json_('Data Aging', False, enable_time, **kwargs)
+        request_json = self._request_json_('Data Aging', False, enable_time)
 
-        error_code, error_message = self._process_update_request(request_json)
+        error_code, error_message = self._process_request_(request_json)
 
         if error_code == '0':
             return
@@ -1474,7 +1425,7 @@ class ClientGroup(object):
         """
         request_json = self._request_json_('Data Aging', False)
 
-        error_code, error_message = self._process_update_request(request_json)
+        error_code, error_message = self._process_request_(request_json)
 
         if error_code == '0':
             self._is_data_aging_enabled = False
@@ -1673,98 +1624,13 @@ class ClientGroup(object):
         """
         install = Install(self._commcell_object)
         return install.push_servicepack_and_hotfix(
-            client_computer_groups=[self.clientgroup_name],
-            reboot_client=reboot_client,
-            run_db_maintenance=run_db_maintenance)
-
-    def update_properties(self, properties_dict):
-        """Updates the client group properties
-
-            Args:
-                properties_dict (dict)  --  client group property dict which is to be updated
-
-            Returns:
-                None
-
-            Raises:
-                SDKException:
-                    if failed to add
-
-                    if response is empty
-
-                    if response code is not as expected
-
-        **Note** self.properties can be used to get a deep copy of all the properties, modify the properties which you
-        need to change and use the update_properties method to set the properties
-
-        """
-        request_json = {
-            "clientGroupOperationType": 2,
-            "clientGroupDetail": {
-                "clientGroup": {
-                    "clientGroupName": self.clientgroup_name
-                }
-            }
-        }
-
-        request_json['clientGroupDetail'].update(properties_dict)
-        error_code, error_message = self._process_update_request(request_json)
-
-        if error_code != '0':
-            raise SDKException(
-                'ClientGroup', '102', 'Failed to update client group property\nError: "{0}"'.format(error_message)
-            )
-
-    def add_additional_setting(
-            self,
-            category=None,
-            key_name=None,
-            data_type=None,
-            value=None,
-            comment=None,
-            enabled=1):
-        """Adds registry key to the client group property
-
-            Args:
-                category        (str)           -- Category of registry key
-
-                key_name        (str)           -- Name of the registry key
-
-                data_type       (str)           -- Data type of registry key
-
-                    Accepted Values: BOOLEAN, INTEGER, STRING, MULTISTRING, ENCRYPTED
-
-                value           (str)           -- Value of registry key
-
-                comment         (str)           -- Comment to be added for the additional setting
-
-                enabled         (int)           -- To enable the additional setting
-                                                    default: 1
-
-            Raises:
-                SDKException:
-                    if failed to add
-
-                    if response is empty
-
-                    if response code is not as expected"""
-
-        properties_dict = {
-            "registryKeys": [{"deleted": 0,
-                              "hidden": False,
-                              "relativepath": category,
-                              "keyName": key_name,
-                              "isInheritedFromClientGroup": False,
-                              "comment": comment,
-                              "type": data_type,
-                              "value": value,
-                              "enabled": enabled}]
-        }
-
-        self.update_properties(properties_dict)
+                                    client_computer_groups=[self.clientgroup_name],
+                                    reboot_client=reboot_client,
+                                    run_db_maintenance=run_db_maintenance)
 
     def refresh(self):
         """Refresh the properties of the ClientGroup."""
         self._initialize_clientgroup_properties()
         self._networkprop = Network(self)
         self._network_throttle = None
+

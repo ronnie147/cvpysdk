@@ -2,18 +2,8 @@
 
 # --------------------------------------------------------------------------
 # Copyright Commvault Systems, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# See LICENSE.txt in the project root for
+# license information.
 # --------------------------------------------------------------------------
 
 """Module for performing operations on a Backupset for the **Virtual Server** Agent.
@@ -24,51 +14,20 @@ VSBackupset:
 
     browse()                        -- browse the content of the backupset
     _process_browse_response()      -- retrieves the items from browse response
-
-    To add a new Virtual Backupset, create a class in a new module under _virtual_server sub package
-
-
-The new module which is created has to named in the following manner:
-1. Name the module with the name of the Virtual Server without special characters
-2.Spaces alone must be replaced with underscores('_')
-
-For eg:
-
-    The Virtual Server 'Red Hat Virtualization' is named as 'red_hat_virtualization.py'
-
-    The Virtual Server 'Hyper-V' is named as 'hyperv.py'
 """
 
 from __future__ import unicode_literals
 
-import re
 import time
-from importlib import import_module
-from inspect import isabstract, isclass, getmembers
 
 from ..backupset import Backupset
 from ..exception import SDKException
-
 
 class VSBackupset(Backupset):
     """Derived class from Backupset Base class, representing a vs backupset,
             and to perform operations on that backupset."""
 
-    def __new__(cls, instance_object, backupset_name, backupset_id=None):
-        """Decides which instance object needs to be created"""
-        instance_name = instance_object.instance_name
-        instance_name = re.sub('[^A-Za-z0-9_]+', '', instance_name.replace(" ", "_"))
 
-        try:
-            backupset_module = import_module("cvpysdk.backupsets._virtual_server.{}".format(instance_name))
-        except ImportError:
-            return object.__new__(cls)
-
-        classes = getmembers(backupset_module, lambda m: isclass(m) and not isabstract(m))
-
-        for name, _class in classes:
-            if issubclass(_class, Backupset) and _class.__module__.rsplit(".", 1)[-1] == instance_name:
-                return object.__new__(_class)
 
     def browse(self, *args, **kwargs):
         """Browses the content of the Backupset.
@@ -117,7 +76,8 @@ class VSBackupset(Backupset):
         options['retry_count'] = 0
         return self._do_browse(options)
 
-    def _process_browse_response(self, flag, response, options):
+
+    def  _process_browse_response(self, flag, response, options):
         """Retrieves the items from browse response.
 
                 Args:
@@ -224,6 +184,7 @@ class VSBackupset(Backupset):
                     paths.append(path)
 
                 return paths, paths_dict
+
 
         else:
             raise SDKException('Response', '101', self._update_response_(response.text))
