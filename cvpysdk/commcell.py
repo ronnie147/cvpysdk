@@ -1106,6 +1106,10 @@ class Commcell(object):
         return self._registered_commcells
 
     @property
+    def protected_vms(self):
+        return self._protected_vms
+
+    @property
     def redirect_rules_of_service(self):
         """Returns the list of redirect rules from service commcell
 
