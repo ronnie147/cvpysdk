@@ -2025,6 +2025,7 @@ class Subclient(object):
             include_active=True,
             include_finished=True,
             lookup_time=1,
+            limit=20,
             job_filter='Backup,SYNTHFULL'):
         """Finds the latest job for the subclient
             which includes current running job also.
@@ -2076,19 +2077,22 @@ class Subclient(object):
             client_jobs = job_controller.all_jobs(
                 client_name=self._client_object.client_name,
                 lookup_time=lookup_time,
-                job_filter=job_filter
+                job_filter=job_filter,
+                limit=limit
             )
         elif include_active:
             client_jobs = job_controller.active_jobs(
                 client_name=self._client_object.client_name,
                 lookup_time=lookup_time,
-                job_filter=job_filter
+                job_filter=job_filter,
+                limit=limit
             )
         elif include_finished:
             client_jobs = job_controller.finished_jobs(
                 client_name=self._client_object.client_name,
                 lookup_time=lookup_time,
-                job_filter=job_filter
+                job_filter=job_filter,
+                limit=limit
             )
         else:
             raise SDKException(

@@ -442,6 +442,7 @@ class Commcell(object):
         self._commcell_migration = None
         self._registered_commcells = None
         self._redirect_rules_service = None
+        self._protected_vms = None
 
         self.refresh()
 
@@ -677,6 +678,37 @@ class Commcell(object):
         if flag:
             if response.json():
                 return response.json()
+            else:
+                raise SDKException('Response', '102')
+        else:
+            raise SDKException('Response', '101', self._update_response_(response.text))
+
+    def _get_protected_vms(self):
+        """
+        Returns all the protected VMs for the particular client
+        Returns:
+                vm_dict -  all properties of VM prtotected
+
+        """
+        flag, response = self._cvpysdk_object.make_request(
+            'GET',
+            self._services['PROTECTED_VMS']
+        )
+
+        if flag:
+            if response.json() and 'vmStatusInfoList' in response.json():
+                result = []
+                for item in response.json()['vmStatusInfoList']:
+                    result.append({
+                        'name': item['name'],
+                        'clientName': item['client']['clientName'],
+                        'vmBackupJob': item['vmBackupJob'],
+                        'strOSName': item['strOSName'],
+                        'vmAgent': item['vmAgent'],
+                        'subclientName': item['subclientName'],
+                        'vcenter': item['pseudoClient']['clientName']
+                    })
+                return result
             else:
                 raise SDKException('Response', '102')
         else:
@@ -1233,6 +1265,7 @@ class Commcell(object):
         self._get_commserv_details()
         self._registered_commcells = None
         self._redirect_rules_service = None
+        self._protected_vms = self._get_protected_vms()
 
     def run_data_aging(
             self,
@@ -1423,33 +1456,6 @@ class Commcell(object):
 
         """
         self.commserv_client.delete_additional_setting(category, key_name)
-
-    def protected_vms(self, days):
-        """
-        Returns all the protected VMs for the particular client for passed days
-        Args:
-            days: Protected VMs for days
-                ex: if value is 30 , returns VM prtected in past 30 days
-
-        Returns:
-                vm_dict -  all properties of VM prtotected for passed days
-
-        """
-
-        from_time, to_time = self._convert_days_to_epoch(days)
-        self._PROTECTED_VMS = self._services['PROTECTED_VMS'] % (from_time, to_time)
-        flag, response = self._cvpysdk_object.make_request(
-            'GET',
-            self._PROTECTED_VMS
-        )
-
-        if flag:
-            if response.json():
-                return response.json()
-            else:
-                raise SDKException('Response', '102')
-        else:
-            raise SDKException('Response', '101', self._update_response_(response.text))
 
     def download_software(self,
                           options=None,

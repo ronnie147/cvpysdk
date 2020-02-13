@@ -183,7 +183,7 @@ SERVICES_DICT_TEMPLATE = {
     'VM_ALLOCATION_POLICY': '{0}VMAllocationPolicy',
     'ALL_VM_ALLOCATION_POLICY': '{0}VMAllocationPolicy?hiddenpolicies=true',
     'GET_VM_ALLOCATION_POLICY': '{0}VMAllocationPolicy/%s',
-    'PROTECTED_VMS': "{0}VM?propertyLevel=AllProperties&status=1&fromTime=%s&toTime=%s",
+    'PROTECTED_VMS': "{0}VM?guid=%s",
 
     'USERS': '{0}User',
     'USER': '{0}User/%s?Level=50',

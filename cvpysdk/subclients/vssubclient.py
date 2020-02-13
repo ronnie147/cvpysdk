@@ -125,6 +125,7 @@ from past.builtins import basestring
 from ..exception import SDKException
 from ..subclient import Subclient
 from ..client import Client
+from ..job import Job
 from .. import constants
 from ..constants import VSAObjects
 
@@ -2387,3 +2388,9 @@ class VirtualServerSubclient(Subclient):
             }
 
         return final_dict
+
+    def find_latest_job(self, hostname):
+        for item in self._commcell_object.protected_vms:
+            if item['clientName'] == hostname:
+                return Job(self._commcell_object, item['vmBackupJob'])
+        raise SDKException("Job isn't found", '101', f'Not found job for {hostname}')
